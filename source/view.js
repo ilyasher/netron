@@ -2297,6 +2297,37 @@ view.ValueTextView = class {
             element.appendChild(line);
             className = 'sidebar-view-item-value-line-border';
         }
+
+        if (true) {
+            this._edit = this._host.document.createElement('div');
+            this._edit.className = 'sidebar-view-item-value-edit-button';
+            this._edit.innerText = 'edit';
+            this._edit.addEventListener('click', () => {
+                for (const item of element.childNodes) {
+                    if (item.className === 'sidebar-view-item-value-line' || item.className === 'sidebar-view-item-value-line-border') {
+                        let form = this._host.document.createElement('INPUT');
+                        form.setAttribute("type", "text");
+                        item.className = 'sidebar-view-item-value-line-edit-input';
+                        item.innerText = ''
+                        item.appendChild(form);
+                        form.value = item.innerText;
+                        form.focus();
+                        form.addEventListener('keydown', (event) => {
+                            if (event.keyCode === 13 && form === this._host.document.activeElement) {
+                                console.log("Setting new value to " + form.value);
+                                item.innerText = form.value;
+                                form.value = '';
+
+                                // Delete form
+                                item.className = 'sidebar-view-item-value-line';
+                                form.remove();
+                            }
+                        })
+                    }
+                }
+            });
+            element.appendChild(this._edit);
+        }
     }
 
     render() {
@@ -2560,7 +2591,8 @@ view.ArgumentView = class extends view.ValueView {
     toggle() {
         if (this._expander) {
             if (this._expander.innerText == '+') {
-                this._expander.innerText = '-';
+                this._expander.innerText = '\u270F';
+                // this._expander.innerText = '-';
 
                 const initializer = this._argument.initializer;
                 if (this._hasId && this._hasCategory) {
