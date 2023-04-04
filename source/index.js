@@ -800,21 +800,17 @@ if (!('scrollBehavior' in window.document.documentElement.style)) {
     };
 }
 
-if (window.location.hostname.endsWith('.github.io')) {
-    window.location.replace('https://netron.app');
-} else {
-    window.require = (id) => {
-        const name = id.startsWith('./') ? id.substring(2) : id;
-        const value = window[name];
-        if (value) {
-            return value;
-        }
-        throw new Error("Module '" + id + "' not found.");
-    };
-    window.addEventListener('load', () => {
-        host.BrowserHost.create().then((host) => {
-            const view = require('./view');
-            window.__view__ = new view.View(host);
-        });
+window.require = (id) => {
+    const name = id.startsWith('./') ? id.substring(2) : id;
+    const value = window[name];
+    if (value) {
+        return value;
+    }
+    throw new Error("Module '" + id + "' not found.");
+};
+window.addEventListener('load', () => {
+    host.BrowserHost.create().then((host) => {
+        const view = require('./view');
+        window.__view__ = new view.View(host);
     });
-}
+});
