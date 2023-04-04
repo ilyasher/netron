@@ -922,7 +922,7 @@ base.Telemetry = class {
             window.addEventListener('pageshow', () => this._update(undefined, true, undefined));
             window.addEventListener('pagehide', () => this._update(undefined, false, undefined));
             window.addEventListener('visibilitychange', () => this._update(undefined, undefined, window.document.visibilityState !== 'hidden'));
-            window.addEventListener('beforeunload', () => this._update() && this.send('user_engagement', {}));
+            // window.addEventListener('beforeunload', () => this._update() && this.send('user_engagement', {}));
         });
     }
 
@@ -945,19 +945,19 @@ base.Telemetry = class {
         return this._config.get(key);
     }
 
-    send(name, params) {
-        params = Object.assign({ event_name: name }, this._metadata, /* { debug_mode: true },*/ params);
-        this._metadata = {};
-        this._update() && (params.engagement_time_msec = this._engagement_time_msec) && (this._engagement_time_msec = 0);
-        const build = (entires) => entires.map((entry) => entry[0] + '=' + encodeURIComponent(entry[1])).join('&');
-        this._cache = this._cache || build(Array.from(this._config));
-        const key = (name, value) => this._schema.get(name) || ('number' === typeof value && !isNaN(value) ? 'epn.' : 'ep.') + name;
-        const body = build(Object.entries(params).map((entry) => [ key(entry[0], entry[1]), entry[1] ]));
-        const url = 'https://analytics.google.com/g/collect?' + this._cache;
-        this._navigator.sendBeacon(url, body);
-        this._session[2] = this.get('session_engaged') || '0';
-        this.set('hit_count', this.get('hit_count') + 1);
-    }
+    // send(name, params) {
+    //     params = Object.assign({ event_name: name }, this._metadata, /* { debug_mode: true },*/ params);
+    //     this._metadata = {};
+    //     this._update() && (params.engagement_time_msec = this._engagement_time_msec) && (this._engagement_time_msec = 0);
+    //     const build = (entires) => entires.map((entry) => entry[0] + '=' + encodeURIComponent(entry[1])).join('&');
+    //     this._cache = this._cache || build(Array.from(this._config));
+    //     const key = (name, value) => this._schema.get(name) || ('number' === typeof value && !isNaN(value) ? 'epn.' : 'ep.') + name;
+    //     const body = build(Object.entries(params).map((entry) => [ key(entry[0], entry[1]), entry[1] ]));
+    //     const url = 'https://analytics.google.com/g/collect?' + this._cache;
+    //     this._navigator.sendBeacon(url, body);
+    //     this._session[2] = this.get('session_engaged') || '0';
+    //     this.set('hit_count', this.get('hit_count') + 1);
+    // }
 
     _update(focused, page, visible) {
         this._focused = focused === true || focused === false ? focused : this._focused;

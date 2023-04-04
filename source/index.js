@@ -63,7 +63,8 @@ host.BrowserHost = class {
 
     view(view) {
         this._view = view;
-        return this._age().then(() => this._consent()).then(() => this._telemetry()).then(() => this._capabilities());
+        // return this._age().then(() => this._consent()).then(() => this._telemetry()).then(() => this._capabilities());
+        return this._age().then(() => this._consent()).then(() => this._capabilities());
     }
 
     _age() {

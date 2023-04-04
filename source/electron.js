@@ -625,7 +625,7 @@ host.Telemetry = class {
         params.ea = action;
         params.el = label;
         params.ev = value;
-        this._send('event', params);
+        // this._send('event', params);
     }
 
     exception(description, fatal) {
@@ -634,34 +634,34 @@ host.Telemetry = class {
         if (fatal) {
             params.exf = '1';
         }
-        this._send('exception', params);
+        // this._send('exception', params);
     }
 
-    _send(type, params) {
-        params.t = type;
-        params.v = '1';
-        for (const param in params) {
-            if (params[param] === null || params[param] === undefined) {
-                delete params[param];
-            }
-        }
-        const body = Object.entries(params).map((entry) => encodeURIComponent(entry[0]) + '=' + encodeURIComponent(entry[1])).join('&');
-        const options = {
-            method: 'POST',
-            host: 'www.google-analytics.com',
-            path: '/collect',
-            headers: { 'Content-Length': Buffer.byteLength(body) }
-        };
-        const request = https.request(options, (response) => {
-            response.on('error', (/* error */) => {});
-        });
-        request.setTimeout(5000, () => {
-            request.destroy();
-        });
-        request.on('error', (/* error */) => {});
-        request.write(body);
-        request.end();
-    }
+    // _send(type, params) {
+    //     params.t = type;
+    //     params.v = '1';
+    //     for (const param in params) {
+    //         if (params[param] === null || params[param] === undefined) {
+    //             delete params[param];
+    //         }
+    //     }
+    //     const body = Object.entries(params).map((entry) => encodeURIComponent(entry[0]) + '=' + encodeURIComponent(entry[1])).join('&');
+    //     const options = {
+    //         method: 'POST',
+    //         host: 'www.google-analytics.com',
+    //         path: '/collect',
+    //         headers: { 'Content-Length': Buffer.byteLength(body) }
+    //     };
+    //     const request = https.request(options, (response) => {
+    //         response.on('error', (/* error */) => {});
+    //     });
+    //     request.setTimeout(5000, () => {
+    //         request.destroy();
+    //     });
+    //     request.on('error', (/* error */) => {});
+    //     request.write(body);
+    //     request.end();
+    // }
 };
 
 host.ElectronHost.FileStream = class {
