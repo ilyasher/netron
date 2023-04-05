@@ -191,6 +191,14 @@ grapher.Node = class {
 
     constructor() {
         this._blocks = [];
+
+        // Owned by parent class
+        this.x = 0;
+        this.y = 0;
+
+        // Owned by this class
+        this.width = 0;
+        this.height = 0;
     }
 
     header() {
@@ -247,6 +255,7 @@ grapher.Node = class {
     }
 
     update() {
+        this.layout();
         this.element.setAttribute('transform', 'translate(' + (this.x - (this.width / 2)) + ',' + (this.y - (this.height / 2)) + ')');
         this.element.style.opacity = 1;
     }
@@ -274,6 +283,17 @@ grapher.Node.Header = class {
 
     constructor() {
         this._entries = [];
+        this._lineElements = [];
+
+        // Owned by parent class
+        this.x = 0;
+        this.y = 0;
+        this.first = false;
+        this.last = false;
+
+        // Owned by this class
+        this.width = 0;
+        this.height = 0;
     }
 
     add(id, classList, content, tooltip, handler) {
@@ -303,17 +323,26 @@ grapher.Node.Header = class {
     }
 
     update(parent, top, width) {
+        for (const entry of this._entries) {
+            entry.update();
+        }
+
+        console.log("Updating with " + top);
+
+        this.width = this._entries.map((block) => block.width).reduce((a, b) => a + b, 0);
+        this.height = Math.max(...this._entries.map((entry) => entry.height));
+
         const document = this._document;
         const dx = width - this.width;
+
+        let x = 0;
+        const y = 0;
         for (let i = 0; i < this._entries.length; i++) {
             const entry = this._entries[i];
-            if (i == 0) {
-                entry.width = entry.width + dx;
-            } else {
-                entry.x = entry.x + dx;
-                entry.tx = entry.tx + dx;
-            }
-            entry.y = entry.y + top;
+            entry.x = x + (i === 0 ? 0 : dx);
+            entry.y = y + top;
+
+            x += entry.width;
         }
         for (let i = 0; i < this._entries.length; i++) {
             const entry = this._entries[i];
@@ -322,10 +351,17 @@ grapher.Node.Header = class {
             const r2 = i == this._entries.length - 1 && this.first;
             const r3 = i == this._entries.length - 1 && this.last;
             const r4 = i == 0 && this.last;
-            entry.path.setAttribute('d', grapher.Node.roundedRect(0, 0, entry.width, entry.height, r1, r2, r3, r4));
+            const entry_width = entry.width + (i === 0 ? dx : 0);
+            entry.path.setAttribute('d', grapher.Node.roundedRect(0, 0, entry_width, entry.height, r1, r2, r3, r4));
             entry.text.setAttribute('x', 6);
-            entry.text.setAttribute('y', entry.ty);
+            entry.text.setAttribute('y', 14); // HACK
+            // entry.text.setAttribute('y', entry.text_y_offset);
+            console.log("before 4", parent.getBBox());
         }
+        for (const line of this._lineElements) {
+            line.remove();
+        }
+        this._lineElements = [];
         for (let i = 0; i < this._entries.length; i++) {
             const entry = this._entries[i];
             if (i != 0) {
@@ -336,6 +372,7 @@ grapher.Node.Header = class {
                 line.setAttribute('y1', top);
                 line.setAttribute('y2', top + this.height);
                 parent.appendChild(line);
+                this._lineElements.push(line);
             }
         }
         if (this.line) {
@@ -357,6 +394,19 @@ grapher.Node.Header.Entry = class {
         this.tooltip = tooltip;
         this.handler = handler;
         this._events = {};
+
+        // Owned by parent class
+        this.x = 0;
+        this.y = 0;
+
+        // Owned by this class
+        this.width = 0;
+        this.height = 0;
+
+        this.text_y_offset = 0;
+
+        this.xPadding = 7;
+        this.yPadding = 4;
     }
 
     on(event, callback) {
@@ -373,8 +423,6 @@ grapher.Node.Header.Entry = class {
     }
 
     build(document, parent) {
-        const yPadding = 4;
-        const xPadding = 7;
         this.element = document.createElementNS('http://www.w3.org/2000/svg', 'g');
         parent.appendChild(this.element);
         this.path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -397,14 +445,22 @@ grapher.Node.Header.Entry = class {
             titleElement.textContent = this.tooltip;
             this.element.appendChild(titleElement);
         }
-        if (this.content) {
-            this.text.textContent = this.content;
-        }
+        this.text.textContent = ' ';
+        this.text_y_offset = this.yPadding - this.text.getBBox().y;
+        console.log()
+
+        this.update();
+    }
+
+    update() {
+        // TODO: also update tooltip, classList, id.
+
+        this.text.textContent = this.content || ' ';
+
         const boundingBox = this.text.getBBox();
-        this.width = boundingBox.width + xPadding + xPadding;
-        this.height = boundingBox.height + yPadding + yPadding;
-        this.tx = xPadding;
-        this.ty = yPadding - boundingBox.y;
+        console.log(boundingBox);
+        this.width = boundingBox.width + this.xPadding + this.xPadding;
+        this.height = boundingBox.height + this.yPadding + this.yPadding;
     }
 };
 

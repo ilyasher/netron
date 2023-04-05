@@ -586,8 +586,16 @@ onnx.Node = class {
         return this._type;
     }
 
+    set type(x) {
+        this._type = x;
+    }
+
     get name() {
         return this._name;
+    }
+
+    set name(x) {
+        this._name = x;
     }
 
     get description() {

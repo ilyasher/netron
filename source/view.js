@@ -937,13 +937,13 @@ view.View = class {
         }
     }
 
-    showNodeProperties(node, input) {
+    showNodeProperties(node, input, nodeView) {
         if (node) {
             try {
                 if (this._menu) {
                     this._menu.close();
                 }
-                const nodeSidebar = new view.NodeSidebar(this._host, node);
+                const nodeSidebar = new view.NodeSidebar(this._host, node, nodeView);
                 nodeSidebar.on('show-documentation', (/* sender, e */) => {
                     this.showDocumentation(node.type);
                 });
@@ -1660,6 +1660,10 @@ view.Node = class extends grapher.Node {
         this.value = value;
         view.Node.counter = view.Node.counter || 0;
         this.id = 'node-' + (value.name ? 'name-' + value.name : 'id-' + (view.Node.counter++).toString());
+
+        this._header = null;
+        this._title = null;
+
         this._add(this.value);
     }
 
@@ -1673,6 +1677,11 @@ view.Node = class extends grapher.Node {
 
     get outputs() {
         return this.value.outputs;
+    }
+
+    updateName(newName) {
+        this._title.content = newName;
+        this.update();
     }
 
     _add(node) {
@@ -1693,7 +1702,9 @@ view.Node = class extends grapher.Node {
         const content = this.context.view.options.names && (node.name || node.location) ? (node.name || node.location) : type.name.split('.').pop();
         const tooltip = this.context.view.options.names && (node.name || node.location) ? type.name : (node.name || node.location);
         const title = header.add(null, styles, content, tooltip);
-        title.on('click', () => this.context.view.showNodeProperties(node, null));
+        this._title = title;
+        this._header = header;
+        title.on('click', () => this.context.view.showNodeProperties(node, null, this));
         if (node.type.nodes && node.type.nodes.length > 0) {
             const definition = header.add(null, styles, '\u0192', 'Show Function Definition');
             definition.on('click', () => this.context.view.pushGraph(node.type));
@@ -1727,7 +1738,7 @@ view.Node = class extends grapher.Node {
         });
         if (initializers.length > 0 || hiddenInitializers || sortedAttributes.length > 0) {
             const list = this.list();
-            list.on('click', () => this.context.view.showNodeProperties(node));
+            list.on('click', () => this.context.view.showNodeProperties(node, null, this));
             for (const initializer of initializers) {
                 const argument = initializer.arguments[0];
                 const type = argument.type;
@@ -2062,7 +2073,7 @@ view.Control = class {
 
 view.NodeSidebar = class extends view.Control {
 
-    constructor(host, node) {
+    constructor(host, node, nodeView) {
         super();
         this._host = host;
         this._node = node;
@@ -2088,7 +2099,13 @@ view.NodeSidebar = class extends view.Control {
         }
 
         if (node.name) {
-            this._addProperty('name', new view.ValueTextView(this._host, node.name));
+            const editAction = (newValue) => {
+                node.name = newValue;
+                nodeView.updateName(newValue);
+                // title.element.childNodes[1].innerHTML = newValue;
+                // title.element.childNodes[1].innerText = newValue;
+            };
+            this._addProperty('name', new view.ValueTextView(this._host, node.name, null, editAction));
         }
 
         if (node.location) {
@@ -2271,12 +2288,48 @@ view.SelectView = class extends view.Control {
 
 view.ValueTextView = class {
 
-    constructor(host, value, action) {
+    constructor(host, value, action, editAction) {
         this._host = host;
         this._elements = [];
         const element = this._host.document.createElement('div');
         element.className = 'sidebar-view-item-value';
         this._elements.push(element);
+
+        if (true) {
+            this._edit = this._host.document.createElement('div');
+            this._edit.className = 'sidebar-view-item-value-edit-button';
+            this._edit.innerText = 'edit';
+            this._edit.addEventListener('click', () => {
+                for (const item of element.childNodes) {
+                    if (item.className === 'sidebar-view-item-value-line' || item.className === 'sidebar-view-item-value-line-border') {
+                        let form = this._host.document.createElement('INPUT');
+                        form.setAttribute("type", "text");
+                        item.className = 'sidebar-view-item-value-line-edit-input';
+                        item.innerText = ''
+                        item.appendChild(form);
+                        form.value = item.innerText;
+                        form.focus();
+                        form.addEventListener('keydown', (event) => {
+                            if (event.keyCode === 13 && form === this._host.document.activeElement) {
+                                const newValue = form.value;
+                                console.log("Setting new value to " + newValue);
+                                item.innerText = newValue;
+                                form.value = '';
+
+                                // Delete form
+                                item.className = 'sidebar-view-item-value-line';
+                                form.remove();
+
+                                console.log(editAction);
+
+                                editAction(newValue);
+                            }
+                        })
+                    }
+                }
+            });
+            element.appendChild(this._edit);
+        }
 
         if (action) {
             this._action = this._host.document.createElement('div');
@@ -2296,37 +2349,6 @@ view.ValueTextView = class {
             line.innerText = item;
             element.appendChild(line);
             className = 'sidebar-view-item-value-line-border';
-        }
-
-        if (true) {
-            this._edit = this._host.document.createElement('div');
-            this._edit.className = 'sidebar-view-item-value-edit-button';
-            this._edit.innerText = 'edit';
-            this._edit.addEventListener('click', () => {
-                for (const item of element.childNodes) {
-                    if (item.className === 'sidebar-view-item-value-line' || item.className === 'sidebar-view-item-value-line-border') {
-                        let form = this._host.document.createElement('INPUT');
-                        form.setAttribute("type", "text");
-                        item.className = 'sidebar-view-item-value-line-edit-input';
-                        item.innerText = ''
-                        item.appendChild(form);
-                        form.value = item.innerText;
-                        form.focus();
-                        form.addEventListener('keydown', (event) => {
-                            if (event.keyCode === 13 && form === this._host.document.activeElement) {
-                                console.log("Setting new value to " + form.value);
-                                item.innerText = form.value;
-                                form.value = '';
-
-                                // Delete form
-                                item.className = 'sidebar-view-item-value-line';
-                                form.remove();
-                            }
-                        })
-                    }
-                }
-            });
-            element.appendChild(this._edit);
         }
     }
 
