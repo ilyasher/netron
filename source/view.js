@@ -103,6 +103,12 @@ view.View = class {
                 }
                 const edit = this._menu.group('&Edit');
                 edit.add({
+                    label: '&Add Node',
+                    accelerator: 'CmdOrCtrl+N',
+                    execute: () => this.addNode(),
+                    enabled: () => this.activeGraph
+                });
+                edit.add({
                     label: '&Find...',
                     accelerator: 'CmdOrCtrl+F',
                     execute: () => this.find(),
@@ -256,6 +262,22 @@ view.View = class {
             this._sidebar.open(content.content, 'Find');
             content.focus(this._searchText);
         }
+    }
+
+    addNode() {
+        console.log("Adding new node!");
+        const newNode = new onnx.Node(null, 'TestOp', '', 'Test Name', '', [], [], []);
+
+        // Add node to the ONNX graph
+        const graph = this.activeGraph;
+        graph._nodes.push(newNode);
+
+        // TODO: instead of re-rendering the entire graph, is it possible to just render a new node?
+        // Add node to the display graph
+        // const viewGraph = this._graph;
+        // viewGraph.createNode(node);
+
+        this.renderGraph(this._model, graph);
     }
 
     get model() {
@@ -2221,7 +2243,6 @@ view.NodeSidebar = class extends view.Control {
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
-        // const editAction = (newValue) => { console.log(name, attribute); };
         const item = new view.NameValueView(this._host, name, value);
         this._attributes.push(item);
         this._attributes_div.insertBefore(item.render(), newAttrButton);

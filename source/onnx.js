@@ -560,7 +560,7 @@ onnx.Node = class {
 
     constructor(context, op_type, domain, name, description, attributes, inputs, outputs) {
         attributes = attributes || [];
-        this._type = context.metadata.type(op_type, domain) || { name: op_type, module: domain };
+        this._type = (context && context.metadata.type(op_type, domain)) || { name: op_type, module: domain };
         if (this.type.module !== domain && !(this._type instanceof onnx.Function)) {
             this._type = Object.assign({}, this.type);
             this._type.name = op_type;
@@ -2407,4 +2407,5 @@ if (typeof module !== 'undefined' && typeof module.exports === 'object') {
     module.exports.ModelFactory = onnx.ModelFactory;
     module.exports.AttributeType = onnx.AttributeType;
     module.exports.AttributeTypeToString = onnx.AttributeTypeToString;
+    module.exports.Node = onnx.Node;
 }

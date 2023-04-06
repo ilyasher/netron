@@ -330,8 +330,6 @@ grapher.Node.Header = class {
             entry.update();
         }
 
-        console.log("Updating with " + top);
-
         this.width = this._entries.map((block) => block.width).reduce((a, b) => a + b, 0);
         this.height = Math.max(...this._entries.map((entry) => entry.height));
 
@@ -359,7 +357,6 @@ grapher.Node.Header = class {
             entry.text.setAttribute('x', 6);
             entry.text.setAttribute('y', 14); // HACK
             // entry.text.setAttribute('y', entry.text_y_offset);
-            console.log("before 4", parent.getBBox());
         }
         for (const line of this._lineElements) {
             line.remove();
@@ -460,7 +457,6 @@ grapher.Node.Header.Entry = class {
         this.text.textContent = this.content || ' ';
 
         const boundingBox = this.text.getBBox();
-        console.log(boundingBox);
         this.width = boundingBox.width + this.xPadding + this.xPadding;
         this.height = boundingBox.height + this.yPadding + this.yPadding;
     }
