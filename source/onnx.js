@@ -711,12 +711,24 @@ onnx.Attribute = class {
         return this._name;
     }
 
+    set name(x) {
+        this._name = x;
+    }
+
     get type() {
         return this._type;
     }
 
+    set type(x) {
+        this._type = x;
+    }
+
     get value() {
         return this._value;
+    }
+
+    set value(x) {
+        this._value = x;
     }
 
     get description() {
@@ -1274,6 +1286,29 @@ onnx.DataType = {
     BFLOAT16: 16
 };
 
+// onnx.DataTypeToString = (type) => {
+//     switch (type) {
+//         case onnx.AttributeType.UNDEFINED: return "undefined";
+//         case onnx.AttributeType.FLOAT: return 'float32';
+//         case onnx.AttributeType.INT: return 'int64';
+//         case onnx.AttributeType.STRING: return 'string';
+//         case onnx.AttributeType.TENSOR: return 'tensor';
+//         case onnx.AttributeType.GRAPH: return 'graph';
+//         case onnx.AttributeType.FLOATS: return 'float32[]';
+//         case onnx.AttributeType.INTS: return 'int64[]';
+//         case onnx.AttributeType.STRINGS: return 'string[]';
+//         case onnx.AttributeType.TENSORS: return 'tensor[]';
+//         case onnx.AttributeType.GRAPHS: return 'graph[]';
+//         case onnx.AttributeType.SPARSE_TENSOR: return 'tensor';
+//         case onnx.AttributeType.SPARSE_TENSORS: return 'tensor[]';
+//         case onnx.AttributeType.TYPE_PROTO: return 'type';
+//         case onnx.AttributeType.TYPE_PROTOS: return 'type[]';
+//         default: 
+//             throw new onnx.Error("Unsupported attribute type '" + attribute.type + "'.");
+//     }
+// };
+
+
 onnx.AttributeType = {
     UNDEFINED: 0,
     FLOAT: 1,
@@ -1290,6 +1325,28 @@ onnx.AttributeType = {
     SPARSE_TENSORS: 12,
     TYPE_PROTO: 13,
     TYPE_PROTOS: 14
+};
+
+onnx.AttributeTypeToString = (type) => {
+    switch (type) {
+        case onnx.AttributeType.UNDEFINED: return "undefined";
+        case onnx.AttributeType.FLOAT: return 'float32';
+        case onnx.AttributeType.INT: return 'int64';
+        case onnx.AttributeType.STRING: return 'string';
+        case onnx.AttributeType.TENSOR: return 'tensor';
+        case onnx.AttributeType.GRAPH: return 'graph';
+        case onnx.AttributeType.FLOATS: return 'float32[]';
+        case onnx.AttributeType.INTS: return 'int64[]';
+        case onnx.AttributeType.STRINGS: return 'string[]';
+        case onnx.AttributeType.TENSORS: return 'tensor[]';
+        case onnx.AttributeType.GRAPHS: return 'graph[]';
+        case onnx.AttributeType.SPARSE_TENSOR: return 'tensor';
+        case onnx.AttributeType.SPARSE_TENSORS: return 'tensor[]';
+        case onnx.AttributeType.TYPE_PROTO: return 'type';
+        case onnx.AttributeType.TYPE_PROTOS: return 'type[]';
+        default: 
+            throw new onnx.Error("Unsupported attribute type '" + type + "'.");
+    }
 };
 
 onnx.ModelContext = class {
@@ -2348,4 +2405,6 @@ onnx.Error = class extends Error {
 
 if (typeof module !== 'undefined' && typeof module.exports === 'object') {
     module.exports.ModelFactory = onnx.ModelFactory;
+    module.exports.AttributeType = onnx.AttributeType;
+    module.exports.AttributeTypeToString = onnx.AttributeTypeToString;
 }

@@ -11,6 +11,9 @@ var hdf5 = require('./hdf5');
 var python = require('./python');
 var grapher = require('./grapher');
 
+var onnx = require('./onnx')
+
+// Main view of the page includes everything.
 view.View = class {
 
     constructor(host, id) {
@@ -30,6 +33,7 @@ view.View = class {
             this._sidebar = new view.Sidebar(this._host, id);
             this._searchText = '';
             this._modelFactoryService = new view.ModelFactoryService(this._host);
+            // TODO: Maybe "Add Node" can go here.
             this._element('sidebar-button').addEventListener('click', () => {
                 this.showModelProperties();
             });
@@ -1017,6 +1021,7 @@ view.View = class {
     }
 };
 
+// Collapsable menu on the left side of the screen containing a bunch of actions.
 view.Menu = class {
 
     constructor(host, element, button) {
@@ -1494,7 +1499,7 @@ view.Menu.Separator = class {
     }
 };
 
-
+// The graph which netron is visualizing.
 view.Graph = class extends grapher.Graph {
 
     constructor(view, model, compound, options) {
@@ -1652,6 +1657,7 @@ view.Graph = class extends grapher.Graph {
     }
 };
 
+// A node in the graph. Represents an input, output, or Op (or some other things).
 view.Node = class extends grapher.Node {
 
     constructor(context, value) {
@@ -1663,6 +1669,9 @@ view.Node = class extends grapher.Node {
 
         this._header = null;
         this._title = null;
+
+        // This is the e.g. onnx.Node which holds data like name, type, etc.
+        this._node_data = null;
 
         this._add(this.value);
     }
@@ -1679,12 +1688,26 @@ view.Node = class extends grapher.Node {
         return this.value.outputs;
     }
 
-    updateName(newName) {
-        this._title.content = newName;
+    updateName(newValue) {
+        this._node_data.name = newValue;
+        this._title.content = this.determineTitle();
         this.update();
     }
 
+    updateType(newValue) {
+        // TODO: also have to fix documentation to point to the new type
+        this._node_data.type.name = newValue;
+        this._title.content = this.determineTitle();
+        this.update();
+    }
+
+    determineTitle() {
+        const node = this._node_data;
+        return this.context.view.options.names && (node.name || node.location) ? (node.name || node.location) : node.type.name.split('.').pop();
+    }
+
     _add(node) {
+        this._node_data = node;
         const header =  this.header();
         const styles = [ 'node-item-type' ];
         const type = node.type;
@@ -1699,7 +1722,7 @@ view.Node = class extends grapher.Node {
             }
             throw error;
         }
-        const content = this.context.view.options.names && (node.name || node.location) ? (node.name || node.location) : type.name.split('.').pop();
+        const content = this.determineTitle();
         const tooltip = this.context.view.options.names && (node.name || node.location) ? type.name : (node.name || node.location);
         const title = header.add(null, styles, content, tooltip);
         this._title = title;
@@ -1872,6 +1895,7 @@ view.Output = class extends grapher.Node {
     }
 };
 
+// Not sure what this is.
 view.Argument = class {
 
     constructor(context, argument) {
@@ -1928,6 +1952,7 @@ view.Argument = class {
     }
 };
 
+// Directed edges connecting the nodes.
 view.Edge = class extends grapher.Edge {
 
     constructor(from, to) {
@@ -1942,6 +1967,7 @@ view.Edge = class extends grapher.Edge {
     }
 };
 
+// Shows Node or Model properties when you click on a node (or 'model properties' icon).
 view.Sidebar = class {
 
     constructor(host, id) {
@@ -2054,6 +2080,7 @@ view.Sidebar = class {
     }
 };
 
+// Infra for sending/receiving messages.
 view.Control = class {
 
     on(event, callback) {
@@ -2071,6 +2098,7 @@ view.Control = class {
     }
 };
 
+// Shows node properties.
 view.NodeSidebar = class extends view.Control {
 
     constructor(host, node, nodeView) {
@@ -2092,19 +2120,15 @@ view.NodeSidebar = class extends view.Control {
                     this.emit('show-documentation', null);
                 };
             }
-            this._addProperty('type', new view.ValueTextView(this._host, node.type.identifier || node.type.name, showDocumentation));
+            const editAction = (newValue) => { nodeView.updateType(newValue); };
+            this._addProperty('type', new view.ValueTextView(this._host, node.type.identifier || node.type.name, showDocumentation, editAction));
             if (node.type.module) {
                 this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
             }
         }
 
         if (node.name) {
-            const editAction = (newValue) => {
-                node.name = newValue;
-                nodeView.updateName(newValue);
-                // title.element.childNodes[1].innerHTML = newValue;
-                // title.element.childNodes[1].innerText = newValue;
-            };
+            const editAction = (newValue) => { nodeView.updateName(newValue); };
             this._addProperty('name', new view.ValueTextView(this._host, node.name, null, editAction));
         }
 
@@ -2176,6 +2200,7 @@ view.NodeSidebar = class extends view.Control {
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
+        // const editAction = (newValue) => { console.log(name, attribute); };
         const item = new view.NameValueView(this._host, name, value);
         this._attributes.push(item);
         this._elements.push(item.render());
@@ -2213,6 +2238,9 @@ view.NodeSidebar = class extends view.Control {
     }
 };
 
+// Shows name: value and puts value in a white box.
+// Used to display model/node properties.
+// Example: (name) producer  (value) pytorch 2.0.0
 view.NameValueView = class {
 
     constructor(host, name, value) {
@@ -2256,6 +2284,7 @@ view.NameValueView = class {
     }
 };
 
+// Allows to select things, could be useful for selecting a data type or attribute type for example.
 view.SelectView = class extends view.Control {
 
     constructor(host, values, selected) {
@@ -2286,6 +2315,9 @@ view.SelectView = class extends view.Control {
     }
 };
 
+// This displays the value of a node/model property.
+// Consists of the white textbox, the actual text, and some action icons.
+// We can add new icons here.
 view.ValueTextView = class {
 
     constructor(host, value, action, editAction) {
@@ -2295,7 +2327,7 @@ view.ValueTextView = class {
         element.className = 'sidebar-view-item-value';
         this._elements.push(element);
 
-        if (true) {
+        if (editAction) {
             this._edit = this._host.document.createElement('div');
             this._edit.className = 'sidebar-view-item-value-edit-button';
             this._edit.innerText = 'edit';
@@ -2303,6 +2335,7 @@ view.ValueTextView = class {
                 for (const item of element.childNodes) {
                     if (item.className === 'sidebar-view-item-value-line' || item.className === 'sidebar-view-item-value-line-border') {
                         let form = this._host.document.createElement('INPUT');
+                        const oldValue = item.innerText;
                         form.setAttribute("type", "text");
                         item.className = 'sidebar-view-item-value-line-edit-input';
                         item.innerText = ''
@@ -2312,6 +2345,15 @@ view.ValueTextView = class {
                         form.addEventListener('keydown', (event) => {
                             if (event.keyCode === 13 && form === this._host.document.activeElement) {
                                 const newValue = form.value;
+
+                                // Interpret empty string as "cancel".
+                                if (!newValue) {
+                                    item.className = 'sidebar-view-item-value-line';
+                                    item.innerText = oldValue;
+                                    form.remove();
+                                    return;
+                                }
+
                                 console.log("Setting new value to " + newValue);
                                 item.innerText = newValue;
                                 form.value = '';
@@ -2319,8 +2361,6 @@ view.ValueTextView = class {
                                 // Delete form
                                 item.className = 'sidebar-view-item-value-line';
                                 form.remove();
-
-                                console.log(editAction);
 
                                 editAction(newValue);
                             }
@@ -2434,6 +2474,8 @@ view.ValueView = class extends view.Control {
     }
 };
 
+
+
 view.AttributeView = class extends view.ValueView {
 
     constructor(host, attribute) {
@@ -2442,6 +2484,80 @@ view.AttributeView = class extends view.ValueView {
         this._attribute = attribute;
         this._element = this._host.document.createElement('div');
         this._element.className = 'sidebar-view-item-value';
+        this._expanded = false;
+        this._value_line = null;
+        this._type_line = null;
+
+        this._edit = null;
+        if (true) {
+            this._edit = this._host.document.createElement('div');
+            this._edit.className = 'sidebar-view-item-value-edit-button';
+            this._edit.innerText = 'edit';
+            this._edit.addEventListener('click', () => {
+                if (!this._expanded) {
+                    this.toggle();
+                }
+                const item = this._value_line
+                let form = this._host.document.createElement('INPUT');
+                const oldValue = item.innerText;
+                form.setAttribute("type", "text");
+                item.className = 'sidebar-view-item-value-line-edit-input';
+                item.innerText = ''
+                item.appendChild(form);
+                form.value = oldValue;
+                form.focus();
+                form.addEventListener('keydown', (event) => {
+                    if (event.keyCode === 13 && form === this._host.document.activeElement) {
+                        const newValue = form.value;
+
+                        // Interpret empty string as "cancel".
+                        if (!newValue) {
+                            item.className = 'sidebar-view-item-value-line';
+                            item.innerText = oldValue;
+                            form.remove();
+                            return;
+                        }
+
+                        console.log("Setting new value to " + newValue);
+                        item.innerText = newValue;
+                        form.value = '';
+
+                        // Delete form
+                        item.className = 'sidebar-view-item-value-line';
+                        form.remove();
+
+                        this._attribute.value = newValue;
+                        // FIXME awful
+                        console.log(this._type_line, this._type_line.childNodes[1].childNodes[0].childNodes[0].value)
+                        this._attribute.type = onnx.AttributeTypeToString(parseInt(this._type_line.childNodes[1].childNodes[0].childNodes[0].value));
+
+                        this.toggle();
+                        this.toggle();
+                        
+                        // editAction(newValue);
+                    }
+                });
+                const oldTypeName = attribute._type;
+                console.log("Old type: ", oldTypeName);
+                let selectTypeHTML = 'type: ' + '<code><b>' + '<select name="types">';
+                for (const pair of Object.entries(onnx.AttributeType)) {
+                    const typeVal = pair[1];
+                    let typeName = onnx.AttributeTypeToString(typeVal);
+                    // FIXME: what if user wants to change to int?
+                    if (typeVal === onnx.AttributeType.INT && oldTypeName === 'DataType') {
+                        typeName = oldTypeName;
+                    }
+                    selectTypeHTML = selectTypeHTML + '<option value="' + typeVal + '"';
+                    if (oldTypeName === typeName) {
+                        selectTypeHTML = selectTypeHTML + ' selected';
+                    }
+                    selectTypeHTML = selectTypeHTML + '>' + typeName + '</option>';
+                }
+                selectTypeHTML = selectTypeHTML +  '</select>' + '</b></code>';
+                this._type_line.innerHTML = selectTypeHTML;
+            });
+            this._element.appendChild(this._edit);
+        }
 
         const type = this._attribute.type;
         if (type) {
@@ -2487,6 +2603,7 @@ view.AttributeView = class extends view.ValueView {
                 line.className = 'sidebar-view-item-value-line';
                 line.innerHTML = content ? content : '&nbsp;';
                 this._element.appendChild(line);
+                this._value_line = line;
             }
         }
     }
@@ -2496,13 +2613,14 @@ view.AttributeView = class extends view.ValueView {
     }
 
     toggle() {
-        if (this._expander.innerText == '+') {
+        if (!this._expanded) {
             this._expander.innerText = '-';
 
             const type = this._attribute.type;
             const value = this._attribute.value;
             const content = type == 'tensor' && value && value.type ? value.type.toString() : this._attribute.type;
             const typeLine = this._host.document.createElement('div');
+            this._type_line = typeLine;
             typeLine.className = 'sidebar-view-item-value-line-border';
             typeLine.innerHTML = 'type: ' + '<code><b>' + content + '</b></code>';
             this._element.appendChild(typeLine);
@@ -2520,10 +2638,11 @@ view.AttributeView = class extends view.ValueView {
             }
         } else {
             this._expander.innerText = '+';
-            while (this._element.childElementCount > 2) {
+            while (this._element.childElementCount > 3) {
                 this._element.removeChild(this._element.lastChild);
             }
         }
+        this._expanded = !this._expanded;
     }
 };
 

@@ -255,6 +255,9 @@ grapher.Node = class {
     }
 
     update() {
+        // FIXME: only call layout() once. At the moment it needs to be called twice because of
+        // an issue in calculating the width.
+        this.layout();
         this.layout();
         this.element.setAttribute('transform', 'translate(' + (this.x - (this.width / 2)) + ',' + (this.y - (this.height / 2)) + ')');
         this.element.style.opacity = 1;
@@ -447,7 +450,6 @@ grapher.Node.Header.Entry = class {
         }
         this.text.textContent = ' ';
         this.text_y_offset = this.yPadding - this.text.getBBox().y;
-        console.log()
 
         this.update();
     }

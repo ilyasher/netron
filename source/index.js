@@ -38,7 +38,7 @@ host.BrowserHost = class {
         };
         return preload([ 'base', 'text', 'flatbuffers', 'flexbuffers', 'zip',  'tar', 'python', 'dagre' ]).then(() => {
             return preload([ 'json', 'xml', 'protobuf', 'hdf5', 'grapher' ]).then(() => {
-                return preload([ 'view' ]).then(() => value);
+                return preload([ 'onnx', 'view']).then(() => value);
             });
         }).catch((error) => {
             value._message(error.message);
