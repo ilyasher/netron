@@ -2105,10 +2105,16 @@ view.NodeSidebar = class extends view.Control {
         super();
         this._host = host;
         this._node = node;
-        this._elements = [];
+        // this._elements = [];
         this._attributes = [];
         this._inputs = [];
         this._outputs = [];
+
+        this._properties_div = this._host.document.createElement('div');
+        this._attributes_div = this._host.document.createElement('div');
+        this._inputs_div = this._host.document.createElement('div');
+        this._outputs_div = this._host.document.createElement('div');
+        this._elements = [this._properties_div, this._attributes_div, this._inputs_div, this._outputs_div];
 
         if (node.type) {
             let showDocumentation = null;
@@ -2152,15 +2158,29 @@ view.NodeSidebar = class extends view.Control {
                 const bu = b.name.toUpperCase();
                 return (au < bu) ? -1 : (au > bu) ? 1 : 0;
             });
-            this._addHeader('Attributes');
+            this._addHeader('Attributes', this._attributes_div);
+
+            // Button to add attributes
+            const addAttributeButton = this._host.document.createElement('button');
+            addAttributeButton.type = 'button';
+            addAttributeButton.innerText = 'New Attribute';
+            addAttributeButton.addEventListener('click', () => {
+                // FIXME: add a new attribute
+                const newAttribute = sortedAttributes[0];
+                node.attributes.push(newAttribute);
+                this._addAttribute("New Attribute Name", newAttribute, addAttributeButton);
+            });
+            this._attributes_div.appendChild(addAttributeButton);
+
             for (const attribute of sortedAttributes) {
-                this._addAttribute(attribute.name, attribute);
+                this._addAttribute(attribute.name, attribute, addAttributeButton);
             }
+            
         }
 
         const inputs = node.inputs;
         if (inputs && inputs.length > 0) {
-            this._addHeader('Inputs');
+            this._addHeader('Inputs', this._inputs_div);
             for (const input of inputs) {
                 this._addInput(input.name, input);
             }
@@ -2168,7 +2188,7 @@ view.NodeSidebar = class extends view.Control {
 
         const outputs = node.outputs;
         if (outputs && outputs.length > 0) {
-            this._addHeader('Outputs');
+            this._addHeader('Outputs', this._outputs_div);
             for (const output of outputs) {
                 this._addOutput(output.name, output);
             }
@@ -2181,21 +2201,22 @@ view.NodeSidebar = class extends view.Control {
 
     render() {
         return this._elements;
+        // return [this._]
     }
 
-    _addHeader(title) {
+    _addHeader(title, div_element) {
         const headerElement = this._host.document.createElement('div');
         headerElement.className = 'sidebar-view-header';
         headerElement.innerText = title;
-        this._elements.push(headerElement);
+        div_element.appendChild(headerElement);
     }
 
     _addProperty(name, value) {
         const item = new view.NameValueView(this._host, name, value);
-        this._elements.push(item.render());
+        this._properties_div.appendChild(item.render());
     }
 
-    _addAttribute(name, attribute) {
+    _addAttribute(name, attribute, newAttrButton) {
         const value = new view.AttributeView(this._host, attribute);
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
@@ -2203,7 +2224,7 @@ view.NodeSidebar = class extends view.Control {
         // const editAction = (newValue) => { console.log(name, attribute); };
         const item = new view.NameValueView(this._host, name, value);
         this._attributes.push(item);
-        this._elements.push(item.render());
+        this._attributes_div.insertBefore(item.render(), newAttrButton);
     }
 
     _addInput(name, input) {
@@ -2217,7 +2238,7 @@ view.NodeSidebar = class extends view.Control {
             });
             const item = new view.NameValueView(this._host, name, value);
             this._inputs.push(item);
-            this._elements.push(item.render());
+            this._inputs_div.appendChild(item.render());
         }
     }
 
@@ -2225,7 +2246,7 @@ view.NodeSidebar = class extends view.Control {
         if (output.arguments.length > 0) {
             const item = new view.NameValueView(this._host, name, new view.ParameterView(this._host, output));
             this._outputs.push(item);
-            this._elements.push(item.render());
+            this._outputs_div.appendChild(item.render());
         }
     }
 
@@ -2487,77 +2508,21 @@ view.AttributeView = class extends view.ValueView {
         this._expanded = false;
         this._value_line = null;
         this._type_line = null;
+        this._old_value = null;
 
-        this._edit = null;
-        if (true) {
-            this._edit = this._host.document.createElement('div');
-            this._edit.className = 'sidebar-view-item-value-edit-button';
-            this._edit.innerText = 'edit';
-            this._edit.addEventListener('click', () => {
-                if (!this._expanded) {
-                    this.toggle();
-                }
-                const item = this._value_line
-                let form = this._host.document.createElement('INPUT');
-                const oldValue = item.innerText;
-                form.setAttribute("type", "text");
-                item.className = 'sidebar-view-item-value-line-edit-input';
-                item.innerText = ''
-                item.appendChild(form);
-                form.value = oldValue;
-                form.focus();
-                form.addEventListener('keydown', (event) => {
-                    if (event.keyCode === 13 && form === this._host.document.activeElement) {
-                        const newValue = form.value;
-
-                        // Interpret empty string as "cancel".
-                        if (!newValue) {
-                            item.className = 'sidebar-view-item-value-line';
-                            item.innerText = oldValue;
-                            form.remove();
-                            return;
-                        }
-
-                        console.log("Setting new value to " + newValue);
-                        item.innerText = newValue;
-                        form.value = '';
-
-                        // Delete form
-                        item.className = 'sidebar-view-item-value-line';
-                        form.remove();
-
-                        this._attribute.value = newValue;
-                        // FIXME awful
-                        console.log(this._type_line, this._type_line.childNodes[1].childNodes[0].childNodes[0].value)
-                        this._attribute.type = onnx.AttributeTypeToString(parseInt(this._type_line.childNodes[1].childNodes[0].childNodes[0].value));
-
-                        this.toggle();
-                        this.toggle();
-                        
-                        // editAction(newValue);
-                    }
-                });
-                const oldTypeName = attribute._type;
-                console.log("Old type: ", oldTypeName);
-                let selectTypeHTML = 'type: ' + '<code><b>' + '<select name="types">';
-                for (const pair of Object.entries(onnx.AttributeType)) {
-                    const typeVal = pair[1];
-                    let typeName = onnx.AttributeTypeToString(typeVal);
-                    // FIXME: what if user wants to change to int?
-                    if (typeVal === onnx.AttributeType.INT && oldTypeName === 'DataType') {
-                        typeName = oldTypeName;
-                    }
-                    selectTypeHTML = selectTypeHTML + '<option value="' + typeVal + '"';
-                    if (oldTypeName === typeName) {
-                        selectTypeHTML = selectTypeHTML + ' selected';
-                    }
-                    selectTypeHTML = selectTypeHTML + '>' + typeName + '</option>';
-                }
-                selectTypeHTML = selectTypeHTML +  '</select>' + '</b></code>';
-                this._type_line.innerHTML = selectTypeHTML;
-            });
-            this._element.appendChild(this._edit);
-        }
+        this._editing = false;
+        this._edit_button = this._host.document.createElement('div');
+        this._edit_button.className = 'sidebar-view-item-value-edit-button';
+        this._edit_button.innerText = 'edit';
+        this._edit_button.addEventListener('click', () => {
+            if (this._editing) {
+                this.endEdit();
+            } else {
+                this.beginEdit(); 
+            }
+        });
+        this._element.appendChild(this._edit_button);
+        this._form = null;
 
         const type = this._attribute.type;
         if (type) {
@@ -2643,6 +2608,75 @@ view.AttributeView = class extends view.ValueView {
             }
         }
         this._expanded = !this._expanded;
+    }
+
+    beginEdit() {
+        if (!this._expanded) {
+            this.toggle();
+        }
+        this._edit_button.innerText = 'done';
+        this._editing = true;
+
+        this._form = this._host.document.createElement('INPUT');
+        this._form.setAttribute("type", "text");
+        this._old_value = this._value_line.innerText;
+        this._value_line.className = 'sidebar-view-item-value-line-edit-input';
+        this._value_line.innerText = ''
+        this._value_line.appendChild(this._form);
+        this._form.value = this._old_value;
+        this._form.focus();
+        this._form.addEventListener('keydown', (event) => {
+            // If pressing enter key && the form is in focus.
+            if (event.keyCode === 13 && this._form === this._host.document.activeElement) {
+                this.endEdit();
+            }
+        });
+        const oldTypeName = this._attribute._type;
+        let selectTypeHTML = 'type: ' + '<code><b>' + '<select name="types">';
+        for (const pair of Object.entries(onnx.AttributeType)) {
+            const typeVal = pair[1];
+            let typeName = onnx.AttributeTypeToString(typeVal);
+            // FIXME: what if user wants to change to int?
+            if (typeVal === onnx.AttributeType.INT && oldTypeName === 'DataType') {
+                typeName = oldTypeName;
+            }
+            selectTypeHTML = selectTypeHTML + '<option value="' + typeVal + '"';
+            if (oldTypeName === typeName) {
+                selectTypeHTML = selectTypeHTML + ' selected';
+            }
+            selectTypeHTML = selectTypeHTML + '>' + typeName + '</option>';
+        }
+        selectTypeHTML = selectTypeHTML +  '</select>' + '</b></code>';
+        this._type_line.innerHTML = selectTypeHTML;
+    }
+
+    endEdit() {
+        this._edit_button.innerText = 'edit';
+        this._editing = false;
+
+        // Interpret empty string as "cancel".
+        const newValue = this._form.value || this._old_value;
+
+        // Delete form
+        this._value_line.innerText = newValue;
+        this._value_line.className = 'sidebar-view-item-value-line';
+        this._form.remove();
+        this._form = null;
+
+        if (newValue == this._old_value) {
+            return;
+        }
+
+        // FIXME awful
+        const newType = parseInt(this._type_line.childNodes[1].childNodes[0].childNodes[0].value);
+        this._attribute.type = onnx.AttributeTypeToString(newType);
+        this._attribute.value = newValue;
+
+        // FIXME: is this necessary?
+        this.toggle();
+        this.toggle();
+
+        // editAction(newValue);
     }
 };
 
