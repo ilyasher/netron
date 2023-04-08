@@ -2176,19 +2176,18 @@ view.NodeSidebar = class extends view.Control {
             this._addHeader('Attributes', this._attributes_div);
 
             // Button to add attributes
-            const addAttributeButton = this._host.document.createElement('button');
-            addAttributeButton.type = 'button';
-            addAttributeButton.innerText = 'New Attribute';
-            addAttributeButton.addEventListener('click', () => {
-                // FIXME: add a new attribute
-                const newAttribute = sortedAttributes[0];
+            this._addCenteredButton('New Attribute', this._attributes_div, () => {
+                const newAttrProto = new onnx.proto.AttributeProto();
+                newAttrProto.type = onnx.AttributeType.INT;
+                newAttrProto.name = 'name';
+                const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
+
                 node.attributes.push(newAttribute);
-                this._addAttribute("New Attribute Name", newAttribute, addAttributeButton);
+                this._addAttribute(newAttribute.name, newAttribute);
             });
-            this._attributes_div.appendChild(addAttributeButton);
 
             for (const attribute of sortedAttributes) {
-                this._addAttribute(attribute.name, attribute, addAttributeButton);
+                this._addAttribute(attribute.name, attribute);
             }
             
         }
@@ -2216,7 +2215,6 @@ view.NodeSidebar = class extends view.Control {
 
     render() {
         return this._elements;
-        // return [this._]
     }
 
     _addHeader(title, div_element) {
@@ -2231,14 +2229,36 @@ view.NodeSidebar = class extends view.Control {
         this._properties_div.appendChild(item.render());
     }
 
-    _addAttribute(name, attribute, newAttrButton) {
+    _addAttribute(name, attribute) {
         const value = new view.AttributeView(this._host, attribute);
         value.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
         const item = new view.NameValueView(this._host, name, value);
         this._attributes.push(item);
+        const newAttrButton = this._attributes_div.childNodes[this._attributes_div.childElementCount - 1];
         this._attributes_div.insertBefore(item.render(), newAttrButton);
+    }
+
+    _addCenteredButton(text, div_element, onClick) {
+        const addAttributeButton = this._host.document.createElement('button');
+        addAttributeButton.type = 'button';
+        addAttributeButton.innerText = text;
+        addAttributeButton.addEventListener('click', onClick);
+
+        // Wrapper to make our button work with NameViewValue.
+        const ButtonValue = class {
+            constructor(button) {
+                this._button = button;
+            }
+            render() {
+                return [this._button];
+            }
+        };
+
+        const item = new view.NameValueView(this._host, '', new ButtonValue(addAttributeButton));
+        div_element.appendChild(item.render());
+        return item.render();
     }
 
     _addInput(name, input) {
@@ -2538,6 +2558,15 @@ view.AttributeView = class extends view.ValueView {
         this._element.appendChild(this._edit_button);
         this._form = null;
 
+        this._remove_button = this._host.document.createElement('div');
+        this._remove_button.className = 'sidebar-view-item-value-edit-button';
+        this._remove_button.innerText = 'remove';
+        this._remove_button.style.display = 'none';
+        this._remove_button.addEventListener('click', () => {
+            this._element.remove();
+        });
+        this._element.appendChild(this._remove_button);
+
         const type = this._attribute.type;
         if (type) {
             this._expander = this._host.document.createElement('div');
@@ -2617,7 +2646,7 @@ view.AttributeView = class extends view.ValueView {
             }
         } else {
             this._expander.innerText = '+';
-            while (this._element.childElementCount > 3) {
+            while (this._element.childElementCount > 4) {
                 this._element.removeChild(this._element.lastChild);
             }
         }
@@ -2630,6 +2659,9 @@ view.AttributeView = class extends view.ValueView {
         }
         this._edit_button.innerText = 'done';
         this._editing = true;
+
+        this._expander.style.display = 'none';
+        this._remove_button.style.display = 'block';
 
         this._form = this._host.document.createElement('INPUT');
         this._form.setAttribute("type", "text");
@@ -2667,6 +2699,9 @@ view.AttributeView = class extends view.ValueView {
     endEdit() {
         this._edit_button.innerText = 'edit';
         this._editing = false;
+
+        this._remove_button.style.display = 'none';
+        this._expander.style.display = 'block';
 
         // Interpret empty string as "cancel".
         const newValue = this._form.value || this._old_value;
@@ -2862,8 +2897,13 @@ view.ModelSidebar = class extends view.Control {
         if (model.domain) {
             this._addProperty('domain', new view.ValueTextView(this._host, model.domain));
         }
-        if (model.imports) {
-            this._addProperty('imports', new view.ValueTextView(this._host, model.imports));
+        // if (model.imports) {
+        //     this._addProperty('imports', new view.ValueTextView(this._host, model.imports));
+        // }
+        if (model.opset) {
+            // TODO: convert to number.
+            const editAction = (newValue) => { model.opset = newValue; };
+            this._addProperty('opset', new view.ValueTextView(this._host, model.opset, null, editAction));
         }
         if (model.runtime) {
             this._addProperty('runtime', new view.ValueTextView(this._host, model.runtime));

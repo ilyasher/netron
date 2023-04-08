@@ -293,6 +293,7 @@ onnx.Model = class {
         this._description = model.doc_string;
         this._metadata = [];
         this._imports = null;
+        this._onnx_opset = null;
 
         const imports = new Map();
         if (model.opset_import && model.opset_import.length > 0) {
@@ -301,6 +302,9 @@ onnx.Model = class {
                 const version = opset_import.version ? typeof opset_import.version === 'number' ? opset_import.version: opset_import.version.toNumber() : 0;
                 if (!imports.has(domain) || imports.get(domain) > version) {
                     imports.set(domain, version);
+                }
+                if (domain === 'ai.onnx') {
+                    this._onnx_opset = version;
                 }
             }
             this._imports = Array.from(imports).map((pair) => pair[0] + ' v' + pair[1].toString());
@@ -408,6 +412,14 @@ onnx.Model = class {
 
     get graphs() {
         return this._graphs;
+    }
+
+    get opset() {
+        return this._onnx_opset;
+    }
+
+    set opset(x) {
+        this._onnx_opset = x;
     }
 };
 
@@ -695,7 +707,7 @@ onnx.Attribute = class {
             default:
                 throw new onnx.Error("Unsupported attribute type '" + attribute.type + "'.");
         }
-        const metadata = context.metadata.attribute(op_type, domain, attribute.name);
+        const metadata = context ? context.metadata.attribute(op_type, domain, attribute.name) : null;
         if (metadata) {
             if (Object.prototype.hasOwnProperty.call(metadata, 'default') && this._value == metadata.default) {
                 this._visible = false;
