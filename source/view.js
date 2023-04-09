@@ -11,7 +11,7 @@ var hdf5 = require('./hdf5');
 var python = require('./python');
 var grapher = require('./grapher');
 
-var onnx = require('./onnx')
+var onnx = require('./onnx');
 
 // Main view of the page includes everything.
 view.View = class {
@@ -2235,6 +2235,7 @@ view.NodeSidebar = class extends view.Control {
             this.emit('show-graph', graph);
         });
         const item = new view.NameValueView(this._host, name, value);
+        value.attachNameValueView(item);
         this._attributes.push(item);
         const newAttrButton = this._attributes_div.childNodes[this._attributes_div.childElementCount - 1];
         this._attributes_div.insertBefore(item.render(), newAttrButton);
@@ -2310,8 +2311,9 @@ view.NameValueView = class {
         nameInputElement.setAttribute('type', 'text');
         nameInputElement.setAttribute('value', name);
         nameInputElement.setAttribute('title', name);
-        nameInputElement.setAttribute('readonly', 'true');
+        nameInputElement.readOnly = true;
         nameElement.appendChild(nameInputElement);
+        this.name_input_element = nameInputElement;
 
         const valueElement = this._host.document.createElement('div');
         valueElement.className = 'sidebar-view-item-value-list';
@@ -2332,6 +2334,10 @@ view.NameValueView = class {
 
     render() {
         return this._element;
+    }
+
+    remove() {
+        this._element.remove();
     }
 
     toggle() {
@@ -2563,7 +2569,7 @@ view.AttributeView = class extends view.ValueView {
         this._remove_button.innerText = 'remove';
         this._remove_button.style.display = 'none';
         this._remove_button.addEventListener('click', () => {
-            this._element.remove();
+            this.remove();
         });
         this._element.appendChild(this._remove_button);
 
@@ -2616,6 +2622,16 @@ view.AttributeView = class extends view.ValueView {
         }
     }
 
+    // Ugly way for this AttributeView to be able to contol the name element
+    // (to edit the attribute name and for deleting this attribute.)
+    attachNameValueView(nameValueView) {
+        this._name_value_view = nameValueView;
+    }
+
+    remove() {
+        this._name_value_view.remove();
+    }
+
     render() {
         return [ this._element ];
     }
@@ -2663,6 +2679,8 @@ view.AttributeView = class extends view.ValueView {
         this._expander.style.display = 'none';
         this._remove_button.style.display = 'block';
 
+        this._name_value_view.name_input_element.readOnly = false;
+
         this._form = this._host.document.createElement('INPUT');
         this._form.setAttribute("type", "text");
         this._old_value = this._value_line.innerText;
@@ -2703,6 +2721,9 @@ view.AttributeView = class extends view.ValueView {
         this._remove_button.style.display = 'none';
         this._expander.style.display = 'block';
 
+        this._name_value_view.name_input_element.readOnly = true;
+        const newName = this._name_value_view.name_input_element.value;
+
         // Interpret empty string as "cancel".
         const newValue = this._form.value || this._old_value;
 
@@ -2712,20 +2733,15 @@ view.AttributeView = class extends view.ValueView {
         this._form.remove();
         this._form = null;
 
-        if (newValue == this._old_value) {
-            return;
-        }
-
         // FIXME awful
         const newType = parseInt(this._type_line.childNodes[1].childNodes[0].childNodes[0].value);
         this._attribute.type = onnx.AttributeTypeToString(newType);
         this._attribute.value = newValue;
+        this._attribute.name = newName;
 
         // FIXME: is this necessary?
         this.toggle();
         this.toggle();
-
-        // editAction(newValue);
     }
 };
 
