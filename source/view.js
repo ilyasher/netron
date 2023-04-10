@@ -2131,82 +2131,57 @@ view.NodeSidebar = class extends view.Control {
         this._outputs_div = this._host.document.createElement('div');
         this._elements = [this._properties_div, this._attributes_div, this._inputs_div, this._outputs_div];
 
-        if (node.type) {
-            let showDocumentation = null;
-            const type = node.type;
-            if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
-                showDocumentation = {};
-                showDocumentation.text = type.nodes ? '\u0192': '?';
-                showDocumentation.callback = () => {
-                    this.emit('show-documentation', null);
-                };
-            }
-            const editAction = (newValue) => { nodeView.updateType(newValue); };
-            this._addProperty('type', new view.ValueTextView(this._host, node.type.identifier || node.type.name, showDocumentation, editAction));
-            if (node.type.module) {
-                this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
-            }
+        let showDocumentation = null;
+        const type = node.type;
+        if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
+            showDocumentation = {};
+            showDocumentation.text = type.nodes ? '\u0192': '?';
+            showDocumentation.callback = () => {
+                this.emit('show-documentation', null);
+            };
+        }
+        this._addProperty('type', new view.ValueTextView(this._host, node.type.identifier || node.type.name, showDocumentation, (newValue) => { nodeView.updateType(newValue); }));
+        // this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
+        this._addProperty('name', new view.ValueTextView(this._host, node.name, null, (newValue) => { nodeView.updateName(newValue); }));
+        this._addProperty('description', new view.ValueTextView(this._host, node.description, null, (newValue) => { node.description = newValue; }));
+
+        this._addHeader('Attributes', this._attributes_div);
+
+        // Button to add attributes
+        this._addCenteredButton('New Attribute', this._attributes_div, () => {
+            const newAttrProto = new onnx.proto.AttributeProto();
+            newAttrProto.type = onnx.AttributeType.INT;
+            newAttrProto.name = 'name';
+            const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
+
+            node.attributes.push(newAttribute);
+            this._addAttribute(newAttribute.name, newAttribute);
+        });
+        const sortedAttributes = node.attributes.slice();
+        sortedAttributes.sort((a, b) => {
+            const au = a.name.toUpperCase();
+            const bu = b.name.toUpperCase();
+            return (au < bu) ? -1 : (au > bu) ? 1 : 0;
+        });
+        for (const attribute of sortedAttributes) {
+            this._addAttribute(attribute.name, attribute);
         }
 
-        if (node.name) {
-            const editAction = (newValue) => { nodeView.updateName(newValue); };
-            this._addProperty('name', new view.ValueTextView(this._host, node.name, null, editAction));
+        this._addHeader('Inputs', this._inputs_div);
+        for (const input of node.inputs) {
+            this._addInput(input.name, input);
         }
+        this._addCenteredButton('New Input', this._inputs_div, () => {
+            console.log("Adding new input!");
+        });
 
-        if (node.location) {
-            this._addProperty('location', new view.ValueTextView(this._host, node.location));
+        this._addHeader('Outputs', this._outputs_div);
+        for (const output of node.outputs) {
+            this._addOutput(output.name, output);
         }
-
-        if (node.description) {
-            this._addProperty('description', new view.ValueTextView(this._host, node.description));
-        }
-
-        if (node.device) {
-            this._addProperty('device', new view.ValueTextView(this._host, node.device));
-        }
-
-        const attributes = node.attributes;
-        if (attributes && attributes.length > 0) {
-            const sortedAttributes = node.attributes.slice();
-            sortedAttributes.sort((a, b) => {
-                const au = a.name.toUpperCase();
-                const bu = b.name.toUpperCase();
-                return (au < bu) ? -1 : (au > bu) ? 1 : 0;
-            });
-            this._addHeader('Attributes', this._attributes_div);
-
-            // Button to add attributes
-            this._addCenteredButton('New Attribute', this._attributes_div, () => {
-                const newAttrProto = new onnx.proto.AttributeProto();
-                newAttrProto.type = onnx.AttributeType.INT;
-                newAttrProto.name = 'name';
-                const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
-
-                node.attributes.push(newAttribute);
-                this._addAttribute(newAttribute.name, newAttribute);
-            });
-
-            for (const attribute of sortedAttributes) {
-                this._addAttribute(attribute.name, attribute);
-            }
-            
-        }
-
-        const inputs = node.inputs;
-        if (inputs && inputs.length > 0) {
-            this._addHeader('Inputs', this._inputs_div);
-            for (const input of inputs) {
-                this._addInput(input.name, input);
-            }
-        }
-
-        const outputs = node.outputs;
-        if (outputs && outputs.length > 0) {
-            this._addHeader('Outputs', this._outputs_div);
-            for (const output of outputs) {
-                this._addOutput(output.name, output);
-            }
-        }
+        this._addCenteredButton('New Output', this._outputs_div, () => {
+            console.log("Adding new output!");
+        });
 
         const separator = this._host.document.createElement('div');
         separator.className = 'sidebar-view-separator';
@@ -2401,7 +2376,7 @@ view.ValueTextView = class {
                         item.className = 'sidebar-view-item-value-line-edit-input';
                         item.innerText = ''
                         item.appendChild(form);
-                        form.value = item.innerText;
+                        form.value = oldValue;
                         form.focus();
                         form.addEventListener('keydown', (event) => {
                             if (event.keyCode === 13 && form === this._host.document.activeElement) {
@@ -2901,40 +2876,31 @@ view.ModelSidebar = class extends view.Control {
         this._model = model;
         this._elements = [];
 
-        if (model.format) {
-            this._addProperty('format', new view.ValueTextView(this._host, model.format));
+        this._addProperty('format', new view.ValueTextView(this._host, model.format));
+        this._addProperty('producer', new view.ValueTextView(this._host, model.producer, null, (newValue) => { model.producer = newValue; }));
+        this._addProperty('model description', new view.ValueTextView(this._host, model.description, null, (newValue) => { model.description = newValue; }));
+        // TODO: convert to number.
+        this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, null, (newValue) => { model.opset = newValue; }));
+        for (const entry of model.metadata) {
+            this._addProperty(entry.name, new view.ValueTextView(this._host, entry.value, null, (newValue) => { entry.value = newValue; }));
         }
-        if (model.producer) {
-            this._addProperty('producer', new view.ValueTextView(this._host, model.producer));
-        }
-        if (model.name) {
-            this._addProperty('name', new view.ValueTextView(this._host, model.name));
-        }
-        if (model.version) {
-            this._addProperty('version', new view.ValueTextView(this._host, model.version));
-        }
-        if (model.description) {
-            this._addProperty('description', new view.ValueTextView(this._host, model.description));
-        }
-        if (model.domain) {
-            this._addProperty('domain', new view.ValueTextView(this._host, model.domain));
-        }
+        // TODO support these
+        // if (model.name) {
+        //     this._addProperty('name', new view.ValueTextView(this._host, model.name));
+        // }
+        // if (model.version) {
+        //     this._addProperty('version', new view.ValueTextView(this._host, model.version));
+        // }
+        // if (model.domain) {
+        //     this._addProperty('domain', new view.ValueTextView(this._host, model.domain));
+        // }
         // if (model.imports) {
         //     this._addProperty('imports', new view.ValueTextView(this._host, model.imports));
         // }
-        if (model.opset) {
-            // TODO: convert to number.
-            const editAction = (newValue) => { model.opset = newValue; };
-            this._addProperty('opset', new view.ValueTextView(this._host, model.opset, null, editAction));
-        }
-        if (model.runtime) {
-            this._addProperty('runtime', new view.ValueTextView(this._host, model.runtime));
-        }
-        if (model.metadata) {
-            for (const entry of model.metadata) {
-                this._addProperty(entry.name, new view.ValueTextView(this._host, entry.value));
-            }
-        }
+        // if (model.runtime) {
+        //     this._addProperty('runtime', new view.ValueTextView(this._host, model.runtime));
+        // }
+
         const graphs = Array.isArray(model.graphs) ? model.graphs : [];
         if (graphs.length > 1) {
             const graphSelector = new view.SelectView(this._host, model.graphs, graph);
@@ -2945,18 +2911,19 @@ view.ModelSidebar = class extends view.Control {
         }
 
         if (graph) {
-            if (graph.version) {
-                this._addProperty('version', new view.ValueTextView(this._host, graph.version));
-            }
-            if (graph.type) {
-                this._addProperty('type', new view.ValueTextView(this._host, graph.type));
-            }
-            if (graph.tags) {
-                this._addProperty('tags', new view.ValueTextView(this._host, graph.tags));
-            }
-            if (graph.description) {
-                this._addProperty('description', new view.ValueTextView(this._host, graph.description));
-            }
+            // TODO support these
+            // if (graph.version) {
+            //     this._addProperty('version', new view.ValueTextView(this._host, graph.version));
+            // }
+            // if (graph.type) {
+            //     this._addProperty('type', new view.ValueTextView(this._host, graph.type));
+            // }
+            // if (graph.tags) {
+            //     this._addProperty('tags', new view.ValueTextView(this._host, graph.tags));
+            // }
+            this._addProperty('graph description', new view.ValueTextView(this._host, graph.description, null, (newValue) => { graph.description = newValue; }));
+
+            // TODO: remove if-statements (always show inputs and outputs)
             if (Array.isArray(graph.inputs) && graph.inputs.length > 0) {
                 this._addHeader('Inputs');
                 for (const input of graph.inputs) {
