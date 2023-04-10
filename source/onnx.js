@@ -2428,4 +2428,6 @@ if (typeof module !== 'undefined' && typeof module.exports === 'object') {
     module.exports.AttributeType = onnx.AttributeType;
     module.exports.AttributeTypeToString = onnx.AttributeTypeToString;
     module.exports.Node = onnx.Node;
+    module.exports.Argument = onnx.Argument;
+    module.exports.Parameter = onnx.Parameter;
 }

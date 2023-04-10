@@ -2168,20 +2168,26 @@ view.NodeSidebar = class extends view.Control {
         }
 
         this._addHeader('Inputs', this._inputs_div);
+        this._addCenteredButton('New Input', this._inputs_div, () => {
+            console.log("Adding new input!");
+
+            const arg = new onnx.Argument('input tensor name');
+            const newInput = new onnx.Parameter('', [arg]);
+
+            node.inputs.push(newInput);
+            this._addInput(newInput.name, newInput);
+        });
         for (const input of node.inputs) {
             this._addInput(input.name, input);
         }
-        this._addCenteredButton('New Input', this._inputs_div, () => {
-            console.log("Adding new input!");
-        });
 
         this._addHeader('Outputs', this._outputs_div);
-        for (const output of node.outputs) {
-            this._addOutput(output.name, output);
-        }
         this._addCenteredButton('New Output', this._outputs_div, () => {
             console.log("Adding new output!");
         });
+        for (const output of node.outputs) {
+            this._addOutput(output.name, output);
+        }
 
         const separator = this._host.document.createElement('div');
         separator.className = 'sidebar-view-separator';
@@ -2238,26 +2244,26 @@ view.NodeSidebar = class extends view.Control {
     }
 
     _addInput(name, input) {
-        if (input.arguments.length > 0) {
-            const value = new view.ParameterView(this._host, input);
-            value.on('export-tensor', (sender, tensor) => {
-                this.emit('export-tensor', tensor);
-            });
-            value.on('error', (sender, tensor) => {
-                this.emit('error', tensor);
-            });
-            const item = new view.NameValueView(this._host, name, value);
-            this._inputs.push(item);
-            this._inputs_div.appendChild(item.render());
-        }
+        const value = new view.ParameterView(this._host, input);
+        value.on('export-tensor', (sender, tensor) => {
+            this.emit('export-tensor', tensor);
+        });
+        value.on('error', (sender, tensor) => {
+            this.emit('error', tensor);
+        });
+        const item = new view.NameValueView(this._host, name, value);
+        this._inputs.push(item);
+
+        const button = this._inputs_div.childNodes[this._inputs_div.childElementCount - 1];
+        this._inputs_div.insertBefore(item.render(), button);
     }
 
     _addOutput(name, output) {
-        if (output.arguments.length > 0) {
-            const item = new view.NameValueView(this._host, name, new view.ParameterView(this._host, output));
-            this._outputs.push(item);
-            this._outputs_div.appendChild(item.render());
-        }
+        const item = new view.NameValueView(this._host, name, new view.ParameterView(this._host, output));
+        this._outputs.push(item);
+
+        const button = this._outputs_div.childNodes[this._outputs_div.childElementCount - 1];
+        this._outputs_div.insertBefore(item.render(), button);
     }
 
     toggleInput(name) {
@@ -2545,6 +2551,9 @@ view.AttributeView = class extends view.ValueView {
         this._remove_button.innerText = 'remove';
         this._remove_button.style.display = 'none';
         this._remove_button.addEventListener('click', () => {
+            if (!this._host.confirm("Delete attribute '" + this._name_value_view._name + "'?", '')) {
+                return;
+            }
             // Permanently remove attribute from node.
             const i = this._node.attributes.indexOf(this._attribute);
             this._node.attributes.splice(i, 1);
@@ -2554,16 +2563,14 @@ view.AttributeView = class extends view.ValueView {
         });
         this._element.appendChild(this._remove_button);
 
+        this._expander = this._host.document.createElement('div');
+        this._expander.className = 'sidebar-view-item-value-expander';
+        this._expander.innerText = '+';
+        this._expander.addEventListener('click', () => {
+            this.toggle();
+        });
+        this._element.appendChild(this._expander);
         const type = this._attribute.type;
-        if (type) {
-            this._expander = this._host.document.createElement('div');
-            this._expander.className = 'sidebar-view-item-value-expander';
-            this._expander.innerText = '+';
-            this._expander.addEventListener('click', () => {
-                this.toggle();
-            });
-            this._element.appendChild(this._expander);
-        }
         const value = this._attribute.value;
         switch (type) {
             case 'graph': {
