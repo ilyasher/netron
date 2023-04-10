@@ -2230,12 +2230,12 @@ view.NodeSidebar = class extends view.Control {
     }
 
     _addAttribute(name, attribute) {
-        const value = new view.AttributeView(this._host, attribute);
-        value.on('show-graph', (sender, graph) => {
+        const attributeView = new view.AttributeView(this._host, attribute, this._node);
+        attributeView.on('show-graph', (sender, graph) => {
             this.emit('show-graph', graph);
         });
-        const item = new view.NameValueView(this._host, name, value);
-        value.attachNameValueView(item);
+        const item = new view.NameValueView(this._host, name, attributeView);
+        attributeView.attachNameValueView(item);
         this._attributes.push(item);
         const newAttrButton = this._attributes_div.childNodes[this._attributes_div.childElementCount - 1];
         this._attributes_div.insertBefore(item.render(), newAttrButton);
@@ -2539,10 +2539,11 @@ view.ValueView = class extends view.Control {
 
 view.AttributeView = class extends view.ValueView {
 
-    constructor(host, attribute) {
+    constructor(host, attribute, node) {
         super();
         this._host = host;
         this._attribute = attribute;
+        this._node = node;
         this._element = this._host.document.createElement('div');
         this._element.className = 'sidebar-view-item-value';
         this._expanded = false;
@@ -2569,6 +2570,11 @@ view.AttributeView = class extends view.ValueView {
         this._remove_button.innerText = 'remove';
         this._remove_button.style.display = 'none';
         this._remove_button.addEventListener('click', () => {
+            // Permanently remove attribute from node.
+            const i = this._node.attributes.indexOf(this._attribute);
+            this._node.attributes.splice(i, 1);
+
+            // Delete html element.
             this.remove();
         });
         this._element.appendChild(this._remove_button);
