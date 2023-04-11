@@ -681,6 +681,9 @@ app.View = class {
         this._window.once('ready-to-show', () => {
             this._window.show();
         });
+        if (owner.application.environment.titlebar && process.platform !== 'darwin') {
+            this._window.removeMenu();
+        }
         this._loadURL();
     }
 
@@ -736,7 +739,11 @@ app.View = class {
         if (this._dispatch) {
             this._dispatch.push({ command: command, data: data });
         } else if (this._window && this._window.webContents) {
-            this._window.webContents.send(command, data);
+            const contents = this._window.webContents;
+            switch (command) {
+                case 'toggle-developer-tools': contents.isDevToolsOpened() ? contents.closeDevTools() : contents.openDevTools(); break;
+                default: contents.send(command, data); break;
+            }
         }
     }
 
