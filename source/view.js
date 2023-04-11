@@ -14,6 +14,7 @@ var grapher = require('./grapher');
 var onnx = require('./onnx');
 
 let all_tensors = [];
+let main_view = null;
 
 // Main view of the page includes everything.
 view.View = class {
@@ -288,6 +289,8 @@ view.View = class {
         // viewGraph.createNode(node);
 
         this.renderGraph(this._model, graph);
+
+        // TODO: open NodeProperties sidebar for the node.
     }
 
     get model() {
@@ -1542,6 +1545,9 @@ view.Graph = class extends grapher.Graph {
         this.model = model;
         this._arguments = new Map();
         this._nodeKey = 0;
+
+        // FIXME
+        main_view = view;
     }
 
     createNode(node) {
@@ -2269,6 +2275,7 @@ view.NodeSidebar = class extends view.Control {
 
     _addInput(name, input) {
         const value = new view.ParameterView(this._host, input);
+        value.attachNode(this._node);
         value.on('export-tensor', (sender, tensor) => {
             this.emit('export-tensor', tensor);
         });
@@ -2777,6 +2784,13 @@ view.ParameterView = class extends view.Control {
         }
     }
 
+    attachNode(node) {
+        this._node = node;
+        for (const item of this._items) {
+            item.attachNode(node);
+        }
+    }
+
     render() {
         return this._elements;
     }
@@ -2853,6 +2867,10 @@ view.ArgumentView = class extends view.ValueView {
         }
     }
 
+    attachNode(node) {
+        this._node = node;
+    }
+
     render() {
         return this._element;
     }
@@ -2883,7 +2901,29 @@ view.ArgumentView = class extends view.ValueView {
         const newTensorName = this._name_line.childNodes[1].childNodes[0].value;
         this._name_line.innerHTML = '<span class=\'sidebar-view-item-value-line-content\'>name: <b>' + newTensorName + '</b></span>';
 
-        // TODO Now, reconnect the nodes and redraw the graph....
+        // Now, reconnect the nodes and redraw the graph.
+        let newTensor = null;
+        for (const tensor of all_tensors) {
+            if (tensor.arguments[0].name == newTensorName) {
+                newTensor = tensor;
+                break;
+            }
+        }
+        const node = this._node;
+        for (let i = 0; i < node.inputs.length; i++) {
+            const oldTensor = node.inputs[i];
+            if (oldTensor.arguments[0].name == this._tensor_name) {
+                node.inputs[i] = newTensor;
+                break;
+            }
+        }
+
+        this._tensor_name = newTensorName;
+
+        // Redraw graph
+        main_view.renderGraph(main_view._model, main_view.activeGraph);
+
+        // TODO: maybe we want the graph to focus on this node after the graph is refreshed.
     }
 
     toggle() {
