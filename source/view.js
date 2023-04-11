@@ -13,6 +13,8 @@ var grapher = require('./grapher');
 
 var onnx = require('./onnx');
 
+let all_tensors = [];
+
 // Main view of the page includes everything.
 view.View = class {
 
@@ -1561,6 +1563,11 @@ view.Graph = class extends grapher.Graph {
     }
 
     add(graph) {
+        all_tensors = graph.inputs;
+        for (const node of graph.nodes) {
+            all_tensors = all_tensors.concat(node.outputs);
+        }
+
         const clusters = new Set();
         const clusterParentMap = new Map();
         const groups = graph.groups;
@@ -2692,13 +2699,13 @@ view.AttributeView = class extends view.ValueView {
             if (typeVal === onnx.AttributeType.INT && oldTypeName === 'DataType') {
                 typeName = oldTypeName;
             }
-            selectTypeHTML = selectTypeHTML + '<option value="' + typeVal + '"';
+            selectTypeHTML += '<option value="' + typeVal + '"';
             if (oldTypeName === typeName) {
-                selectTypeHTML = selectTypeHTML + ' selected';
+                selectTypeHTML += ' selected';
             }
-            selectTypeHTML = selectTypeHTML + '>' + typeName + '</option>';
+            selectTypeHTML += '>' + typeName + '</option>';
         }
-        selectTypeHTML = selectTypeHTML +  '</select>' + '</b></code>';
+        selectTypeHTML +=  '</select>' + '</b></code>';
         this._type_line.innerHTML = selectTypeHTML;
     }
 
@@ -2783,6 +2790,20 @@ view.ArgumentView = class extends view.ValueView {
             this._element.classList.add('sidebar-view-item-value-dark');
         }
 
+        this._editing = false;
+        this._edit_button = this._host.document.createElement('div');
+        this._edit_button.className = 'sidebar-view-item-value-edit-button';
+        this._edit_button.innerText = 'edit';
+        this._edit_button.addEventListener('click', () => {
+            if (this._editing) {
+                this.endEdit();
+            } else {
+                this.beginEdit(); 
+            }
+        });
+        this._element.appendChild(this._edit_button);
+        this._form = null;
+
         if (type || initializer || quantization || location) {
             this._expander = this._host.document.createElement('div');
             this._expander.className = 'sidebar-view-item-value-expander';
@@ -2796,6 +2817,8 @@ view.ArgumentView = class extends view.ValueView {
         const name = this._argument.name ? this._argument.name.split('\n').shift() : ''; // custom argument id
         this._hasId = name ? true : false;
         this._hasCategory = initializer && initializer.category ? true : false;
+        this._name_line = null;
+        this._tensor_name = name;
         if (this._hasId || (!this._hasCategory && !type)) {
             this._hasId = true;
             const nameLine = this._host.document.createElement('div');
@@ -2805,6 +2828,7 @@ view.ArgumentView = class extends view.ValueView {
             }
             nameLine.innerHTML = '<span class=\'sidebar-view-item-value-line-content\'>name: <b>' + (name || ' ') + '</b></span>';
             this._element.appendChild(nameLine);
+            this._name_line = nameLine;
         } else if (this._hasCategory) {
             this._bold('category', initializer.category);
         } else if (type) {
@@ -2816,11 +2840,40 @@ view.ArgumentView = class extends view.ValueView {
         return this._element;
     }
 
+    beginEdit() {
+        // TODO: only if input is tensor
+        this._editing = true;
+        this._edit_button.innerText = 'done';
+        let selectHTML = 'name: ' + '<b>' + '<select name="tensors">';
+        for (const tensor of all_tensors) {
+            // I hope tensor names can't contain quotes...
+            const tensorName = tensor.arguments[0].name;
+            selectHTML += '<option value="' + tensorName + '"';
+            if (this._tensor_name === tensorName) {
+                selectHTML += ' selected';
+            }
+            selectHTML += '>' + tensorName + '</option>';
+        }
+        selectHTML +=  '</select>' + '</b>';
+        this._name_line.innerHTML = selectHTML;
+    }
+
+    endEdit() {
+        this._editing = false;
+        this._edit_button.innerText = 'edit';
+
+        // FIXME awful
+        const newTensorName = this._name_line.childNodes[1].childNodes[0].value;
+        this._name_line.innerHTML = '<span class=\'sidebar-view-item-value-line-content\'>name: <b>' + newTensorName + '</b></span>';
+
+        // TODO Now, reconnect the nodes and redraw the graph....
+    }
+
     toggle() {
         if (this._expander) {
             if (this._expander.innerText == '+') {
-                this._expander.innerText = '\u270F';
-                // this._expander.innerText = '-';
+                // this._expander.innerText = '\u270F';
+                this._expander.innerText = '-';
 
                 const initializer = this._argument.initializer;
                 if (this._hasId && this._hasCategory) {
@@ -2867,7 +2920,7 @@ view.ArgumentView = class extends view.ValueView {
                 }
             } else {
                 this._expander.innerText = '+';
-                while (this._element.childElementCount > 2) {
+                while (this._element.childElementCount > 3) {
                     this._element.removeChild(this._element.lastChild);
                 }
             }
