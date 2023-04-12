@@ -2174,6 +2174,24 @@ view.NodeSidebar = class extends view.Control {
         // this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
         this._addProperty('name', new view.ValueTextView(this._host, node.name, null, (newValue) => { nodeView.updateName(newValue); }));
         this._addProperty('description', new view.ValueTextView(this._host, node.description, null, (newValue) => { node.description = newValue; }));
+        this._addCenteredButton('Delete Node', this._properties_div, () => {
+            // Confirm with user.
+            if (!this._host.confirm("Delete this " + node.type.name + " node?", '')) {
+                return;
+            }
+
+            const graph = main_view.activeGraph;
+            for (let i = 0; i < graph.nodes.length; i++) {
+                if (graph.nodes[i] === node)
+                {
+                    graph.nodes.splice(i, 1);
+                    break;
+                }
+            }
+
+            // TODO: Don't show the spinny wheel.
+            main_view._reload();
+        });
 
         this._addHeader('Attributes', this._attributes_div);
 
@@ -2923,7 +2941,7 @@ view.ArgumentView = class extends view.ValueView {
         // Redraw graph
         main_view.renderGraph(main_view._model, main_view.activeGraph);
 
-        // TODO: maybe we want the graph to focus on this node after the graph is refreshed.
+        // TODO: maybe we want the view to center on this node after the graph is refreshed.
     }
 
     toggle() {
