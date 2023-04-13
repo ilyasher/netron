@@ -14,6 +14,10 @@ class Model:
 
     def __init__(self, model: gs.Graph):
         self.model: gs.Graph = model
+
+        # Initial nodes have ids of 0..N-1
+        # This is a convention we share with the Javascript client so that we don't
+        # need to communicate an initial mapping of IDs.
         self.nodes: Dict[int, gs.Node] = {id: node for id, node in enumerate(model.nodes)}
 
         # TODO: do we need a lock?
@@ -26,12 +30,6 @@ class Model:
     @classmethod
     def from_bytes(cls, bytes: bytes) -> "Model":
         return Model(gs.import_onnx(onnx.load_model_from_string(bytes)))
-
-    ################# I'm not sure if we really need this API.
-    def assign_node_ids(self, node_ids: bytes):
-        # FIXME no assert
-        assert len(node_ids) == len(self.model.nodes)
-        self.nodes = {id: node for id, node in zip(node_ids, self.model.nodes)}
 
     ################ Serialization & Saving
     def to_bytes(self) -> bytes:

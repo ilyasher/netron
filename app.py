@@ -37,12 +37,6 @@ def open_model():
     onnx_file = request.files['file']
     model = Model.from_bytes(onnx_file.file.read())
 
-@post('/model/assign_node_ids')
-def assign_node_ids():
-    # I would like to delete this.
-    global model
-    model.assign_node_ids(request.json)
-
 @post('/model/edit')
 def edit_model():
     # This should be called when the user makes an edit to the model using the web GUI.

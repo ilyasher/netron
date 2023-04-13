@@ -117,6 +117,7 @@ view.View = class {
                     enabled: () => this.activeGraph
                 });
                 // FIXME relocate
+                // FIXME remove '|| true'.
                 if (has_python || true) {
                     edit.add({
                         label: '&Download Model',
@@ -339,21 +340,17 @@ view.View = class {
 
     // TODO maybe this is not the best place to put it.
     assignNodeIDs() {
+        // Assign unique ID values to all the nodes, so that we can easily reference them by ID
+        // when communicating node edits to the server.
+
+        // Assign the initial nodes ID values of 0..N-1 based on their order in the node list.
+        // The python server will do the same, so don't change this unless you also change the python code.
         const node_ids = [];
         let id = 0;
         for (const node of this.activeGraph.nodes) {
             node.unique_id = id;
             node_ids.push(id);
             id++;
-        }
-        if (has_python) {
-            fetch('/model/assign_node_ids', {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify(node_ids)
-            });
         }
     }
 
