@@ -23,47 +23,35 @@ def has_python():
     import platform
     return platform.python_version()
 
-
-### Graphsurgeon stuff begins here
-### TODO: factor out to different file
-
-import onnx
-import onnx_graphsurgeon as gs
-
+from graphsurgeon_http import Model
 model = None
 
-@post('/open_model')
+@post('/model/open')
 def open_model():
     global model
-    print("[app.py] importing model")
     onnx_file = request.files['file']
-    print(onnx_file)
-    model = gs.import_onnx(onnx.load_model_from_string(onnx_file.file.read()))
-    print("[app.py] imported model!")
+    model = Model.from_bytes(onnx_file.file.read())
 
-@post('/edit_model')
+@post('/model/edit')
 def edit_model():
     global model
-    edit = request.json
-    print(edit)
-    if edit['action'] == 'change_attr_name':
-        for node in model.nodes:
-            if node.name == edit['node_name']:
-                node.attrs[edit['new_name']] = node.attrs.pop(edit['attr_name'])
-    else:
-        print("Unknown edit action: ", edit['action'])
+    try:
+        model.edit(request.json)
+    except KeyError as e:
+        print("KeyError when editing model: ", e)
 
-@post('/save_model')
+@post('/model/save')
 def save_model():
     global model
-    model_proto = gs.export_onnx(model)
-    # as_bytes = model_proto.SerializeToString()
-
-    # FIXME is this necessary?
     tmp_filename = '/tmp/modified.onnx'
-    onnx.save(model_proto, tmp_filename)
-    return static_file(tmp_filename, root='/', download='modified.onnx')
+    model.save_to_file(tmp_filename)
+    return static_file(tmp_filename, root='/')
 
+@post('/model/cleanup')
+def cleanup_model():
+    global model
+    model.cleanup()
+    return save_model()
 
 
 ### end Graphsurgeon stuff

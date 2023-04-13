@@ -123,7 +123,25 @@ view.View = class {
                         label: '&Download Model',
                         accelerator: 'CmdOrCtrl+S',
                         execute: () => {
-                            fetch('/save_model', { method: 'POST' })
+                            fetch('/model/save', { method: 'POST' })
+                                .then((status) => {
+                                    console.log(status);
+                                    status.blob().then((blob) => {
+                                        const bigBlob = new Blob([ blob ]);
+                                        this._host.export('modified.onnx', bigBlob);
+                                    });
+                                }).catch((e) => { console.log(e); });
+                        },
+                        enabled: () => this.activeGraph
+                    });    
+                }
+                // FIXME relocate
+                if (has_python || true) {
+                    edit.add({
+                        label: '&Cleanup Model',
+                        // accelerator: 'CmdOrCtrl+S',
+                        execute: () => {
+                            fetch('/model/cleanup', { method: 'POST' })
                                 .then((status) => {
                                     console.log(status);
                                     status.blob().then((blob) => {
@@ -2790,7 +2808,7 @@ view.AttributeView = class extends view.ValueView {
         const newValue = this._form.value || this._old_value;
 
         if (has_python) {
-            fetch('/edit_model', {
+            fetch('/model/edit', {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
@@ -5256,7 +5274,7 @@ view.ModelFactoryService = class {
             // Send ONNX file to server.
             const form = new FormData();
             form.append('file', context.file);
-            fetch('/open_model', {
+            fetch('/model/open', {
                 method: 'POST',
                 body: form
             }).catch((e) => { console.log(e); });    
