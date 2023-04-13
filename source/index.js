@@ -658,6 +658,10 @@ host.BrowserHost.BrowserFileContext = class {
         return this._stream;
     }
 
+    get file() {
+        return this._file;
+    }
+
     request(file, encoding, basename) {
         if (basename !== undefined) {
             return this._host.request(file, encoding, basename);

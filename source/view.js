@@ -117,6 +117,24 @@ view.View = class {
                     execute: () => this.addNode(),
                     enabled: () => this.activeGraph
                 });
+                // FIXME relocate
+                if (has_python || true) {
+                    edit.add({
+                        label: '&Download Model',
+                        accelerator: 'CmdOrCtrl+S',
+                        execute: () => {
+                            fetch('/save_model', { method: 'POST' })
+                                .then((status) => {
+                                    console.log(status);
+                                    status.blob().then((blob) => {
+                                        const bigBlob = new Blob([ blob ]);
+                                        this._host.export('modified.onnx', bigBlob);
+                                    });
+                                }).catch((e) => { console.log(e); });
+                        },
+                        enabled: () => this.activeGraph
+                    });    
+                }
                 edit.add({
                     label: '&Find...',
                     accelerator: 'CmdOrCtrl+F',
@@ -2722,6 +2740,7 @@ view.AttributeView = class extends view.ValueView {
         this._expander.style.display = 'none';
         this._remove_button.style.display = 'block';
 
+        this._old_name = this._name_value_view.name_input_element.value;
         this._name_value_view.name_input_element.readOnly = false;
 
         this._form = this._host.document.createElement('INPUT');
@@ -2769,6 +2788,21 @@ view.AttributeView = class extends view.ValueView {
 
         // Interpret empty string as "cancel".
         const newValue = this._form.value || this._old_value;
+
+        if (has_python) {
+            fetch('/edit_model', {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    'action': 'change_attr_name',
+                    'node_name': this._node.name,
+                    'attr_name': this._old_name,
+                    'new_name': newName,
+                })
+            }).catch((e) => { console.log(e); });    
+        }
 
         // Delete form
         this._value_line.innerText = newValue;
@@ -5218,6 +5252,16 @@ view.ModelFactoryService = class {
     }
 
     open(context) {
+        if (has_python) {
+            // Send ONNX file to server.
+            const form = new FormData();
+            form.append('file', context.file);
+            fetch('/open_model', {
+                method: 'POST',
+                body: form
+            }).catch((e) => { console.log(e); });    
+        }
+
         return this._openSignature(context).then((context) => {
             const modelContext = new view.ModelContext(context);
             /* eslint-disable consistent-return */
