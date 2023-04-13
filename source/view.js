@@ -42,7 +42,6 @@ view.View = class {
             this._sidebar = new view.Sidebar(this._host, id);
             this._searchText = '';
             this._modelFactoryService = new view.ModelFactoryService(this._host);
-            // TODO: Maybe "Add Node" can go here.
             this._element('sidebar-button').addEventListener('click', () => {
                 this.showModelProperties();
             });
@@ -321,6 +320,9 @@ view.View = class {
         console.log("Adding new node!");
         const newNode = new onnx.Node(null, 'TestOp', '', 'Test Name', '', [], [], []);
 
+        const lastID = this.activeGraph.nodes[this.activeGraph.nodes.length - 1].unique_id;
+        newNode.unique_id = lastID + 1;
+
         // Add node to the ONNX graph
         const graph = this.activeGraph;
         graph._nodes.push(newNode);
@@ -333,6 +335,26 @@ view.View = class {
         this.renderGraph(this._model, graph);
 
         // TODO: open NodeProperties sidebar for the node.
+    }
+
+    // TODO maybe this is not the best place to put it.
+    assignNodeIDs() {
+        const node_ids = [];
+        let id = 0;
+        for (const node of this.activeGraph.nodes) {
+            node.unique_id = id;
+            node_ids.push(id);
+            id++;
+        }
+        if (has_python) {
+            fetch('/model/assign_node_ids', {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(node_ids)
+            });
+        }
     }
 
     get model() {
@@ -751,6 +773,7 @@ view.View = class {
             const lastGraphs = this._graphs;
             this._model = model;
             this._graphs = graphs;
+            this.assignNodeIDs();
             return this.renderGraph(this._model, this.activeGraph).then(() => {
                 if (this._page !== 'default') {
                     this.show('default');
@@ -2252,7 +2275,7 @@ view.NodeSidebar = class extends view.Control {
                     },
                     body: JSON.stringify({
                         'action': 'add_attr',
-                        'node_name': node.name,
+                        'node_id': node.unique_id,
                         'attr_name': newAttribute.name,
                         'attr_value': newAttribute.value,
                         'attr_type': 'int', // unused
@@ -2673,7 +2696,7 @@ view.AttributeView = class extends view.ValueView {
                     },
                     body: JSON.stringify({
                         'action': 'remove_attr',
-                        'node_name': this._node.name,
+                        'node_id': this._node.unique_id,
                         'attr_name': this._attribute.name,
                     })
                 });
@@ -2846,7 +2869,7 @@ view.AttributeView = class extends view.ValueView {
                     },
                     body: JSON.stringify({
                         'action': 'change_attr_name',
-                        'node_name': this._node.name,
+                        'node_id': this._node.unique_id,
                         'attr_name': this._old_name,
                         'new_name': newName,
                     })
@@ -2860,7 +2883,7 @@ view.AttributeView = class extends view.ValueView {
                     },
                     body: JSON.stringify({
                         'action': 'change_attr_value',
-                        'node_name': this._node.name,
+                        'node_id': this._node.unique_id,
                         'attr_name': this._old_name,
                         'new_value': newValue,
                     })

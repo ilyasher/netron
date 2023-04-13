@@ -14,9 +14,7 @@ class Model:
 
     def __init__(self, model: gs.Graph):
         self.model: gs.Graph = model
-
-        # TODO: generate node IDs.
-        self.nodes: Dict[str, gs.Node] = ...
+        self.nodes: Dict[int, gs.Node] = {id: node for id, node in enumerate(model.nodes)}
 
         # TODO: do we need a lock?
 
@@ -28,6 +26,12 @@ class Model:
     @classmethod
     def from_bytes(cls, bytes: bytes) -> "Model":
         return Model(gs.import_onnx(onnx.load_model_from_string(bytes)))
+
+    ################# I'm not sure if we really need this API.
+    def assign_node_ids(self, node_ids: bytes):
+        # FIXME no assert
+        assert len(node_ids) == len(self.model.nodes)
+        self.nodes = {id: node for id, node in zip(node_ids, self.model.nodes)}
 
     ################ Serialization & Saving
     def to_bytes(self) -> bytes:
@@ -60,7 +64,7 @@ class Model:
             # Node properties.
             'add_node': None,
             'remove_node': None,
-            'change_node_name': None,
+            'change_node_id': None,
             'change_node_op': None,
             'change_node_description': None,
 
@@ -89,13 +93,10 @@ class Model:
         return action_handlers[action_name](edit_json)
     
     def _get_node_by_id(self, node_id):
-        for node in self.model.nodes:
-            if node.name == node_id: # FIXME
-                return node
-        raise KeyError(node_id)
+        return self.nodes[node_id]
 
     def _change_attr_name(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_name'] # FIXME use ID
+        node_id = edit_json['node_id'] # FIXME use ID
         attr_name = edit_json['attr_name']
         new_name = edit_json['new_name']
 
@@ -103,7 +104,7 @@ class Model:
         node.attrs[new_name] = node.attrs.pop(attr_name)
 
     def _change_attr_value(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_name'] # FIXME use ID
+        node_id = edit_json['node_id'] # FIXME use ID
         attr_name = edit_json['attr_name']
         new_value = edit_json['new_value']
 
@@ -115,7 +116,7 @@ class Model:
         pass
 
     def _add_attr(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_name'] # FIXME use ID
+        node_id = edit_json['node_id'] # FIXME use ID
         attr_name = edit_json['attr_name']
         attr_value = edit_json['attr_value']
         attr_type = edit_json['attr_type'] # FIXME unused
@@ -124,7 +125,7 @@ class Model:
         node.attrs[attr_name] = attr_value
 
     def _remove_attr(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_name'] # FIXME use ID
+        node_id = edit_json['node_id'] # FIXME use ID
         attr_name = edit_json['attr_name']
 
         node = self._get_node_by_id(node_id)
