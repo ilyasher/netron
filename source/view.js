@@ -2244,6 +2244,22 @@ view.NodeSidebar = class extends view.Control {
             newAttrProto.name = 'name';
             const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
 
+            if (has_python) {
+                fetch('/model/edit', {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        'action': 'add_attr',
+                        'node_name': node.name,
+                        'attr_name': newAttribute.name,
+                        'attr_value': newAttribute.value,
+                        'attr_type': 'int', // unused
+                    })
+                });
+            }
+
             node.attributes.push(newAttribute);
             this._addAttribute(newAttribute.name, newAttribute);
         });
@@ -2649,6 +2665,20 @@ view.AttributeView = class extends view.ValueView {
             const i = this._node.attributes.indexOf(this._attribute);
             this._node.attributes.splice(i, 1);
 
+            if (has_python) {
+                fetch('/model/edit', {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        'action': 'remove_attr',
+                        'node_name': this._node.name,
+                        'attr_name': this._attribute.name,
+                    })
+                });
+            }
+
             // Delete html element.
             this.remove();
         });
@@ -2808,18 +2838,34 @@ view.AttributeView = class extends view.ValueView {
         const newValue = this._form.value || this._old_value;
 
         if (has_python) {
-            fetch('/model/edit', {
-                method: 'POST',
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    'action': 'change_attr_name',
-                    'node_name': this._node.name,
-                    'attr_name': this._old_name,
-                    'new_name': newName,
-                })
-            }).catch((e) => { console.log(e); });    
+            if (newName !== this._old_name) {
+                fetch('/model/edit', {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        'action': 'change_attr_name',
+                        'node_name': this._node.name,
+                        'attr_name': this._old_name,
+                        'new_name': newName,
+                    })
+                }).catch((e) => { console.log(e); });
+            }
+            if (newValue !== this._old_value) {
+                fetch('/model/edit', {
+                    method: 'POST',
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                        'action': 'change_attr_value',
+                        'node_name': this._node.name,
+                        'attr_name': this._old_name,
+                        'new_value': newValue,
+                    })
+                }).catch((e) => { console.log(e); });
+            }
         }
 
         // Delete form

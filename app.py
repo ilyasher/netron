@@ -7,6 +7,9 @@
 from bottle import route, get, post, request, run, static_file
 import pathlib
 
+from graphsurgeon_http import Model
+model = None
+
 @route('/<filename:path>')
 def get_file(filename):
     response = static_file(filename, root=pathlib.Path(__file__).parent.resolve())
@@ -22,9 +25,6 @@ def has_python():
     # Javascript can query this to see if python is available.
     import platform
     return platform.python_version()
-
-from graphsurgeon_http import Model
-model = None
 
 @post('/model/open')
 def open_model():
@@ -53,7 +53,5 @@ def cleanup_model():
     model.cleanup()
     return save_model()
 
-
-### end Graphsurgeon stuff
 
 run(host='localhost', port=8080, debug=True)
