@@ -16,6 +16,12 @@ var onnx = require('./onnx');
 let all_tensors = [];
 let main_view = null;
 
+let has_python = false;
+console.log("hello?");
+fetch('/python_version', {method: "GET"})
+    .then(() => { has_python = true; console.log("We have python!"); })
+    .catch(() => { console.log("We don't have python!"); });
+
 // Main view of the page includes everything.
 view.View = class {
 
