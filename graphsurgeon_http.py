@@ -59,35 +59,26 @@ class Model:
             'change_attr_value': self._change_attr_value,
             'change_attr_type': self._change_attr_type,
 
-            # below this line is TODO
-
             # Node properties.
-            'add_node': None,
-            'remove_node': None,
-            'change_node_id': None,
-            'change_node_op': None,
-            'change_node_description': None,
+            'add_node': self._add_node,
+            'remove_node': self._remove_node,
+            'change_node_name': self._change_node_name,
+            'change_node_op': self._change_node_op,
+            'change_node_description': self._change_node_description,
 
             # Node inputs & outputs.
-            'add_node_input': None,
-            'remove_node_input': None,
-            'change_node_input': None,
-            'add_node_output': None,
-            'remove_node_output': None,
-            'change_node_output': None,
+            'add_node_input_output': self._add_node_input_output,
+            'remove_node_input_output': self._remove_node_input_output,
+            'change_node_input_output': self._change_node_input_output,
 
             # Model properties.
-            'change_model_opset': None,
-            'change_model_producer': None,
-            'change_model_description': None,
+            'change_model_opset': self._change_model_opset,
+            'change_model_producer': self._change_model_producer,
+            'change_model_description': self._change_model_description,
 
             # Model inputs & outputs.
-            'add_model_input': None,
-            'remove_model_input': None,
-            'change_model_input': None,
-            'add_model_output': None,
-            'remove_model_output': None,
-            'change_model_output': None,
+            'add_model_input_output': self._add_model_input_output,
+            'remove_model_input_output': self._remove_model_input_output,
         }
         action_name = edit_json['action']
         return action_handlers[action_name](edit_json)
@@ -96,7 +87,7 @@ class Model:
         return self.nodes[node_id]
 
     def _change_attr_name(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_id'] # FIXME use ID
+        node_id = edit_json['node_id']
         attr_name = edit_json['attr_name']
         new_name = edit_json['new_name']
 
@@ -104,7 +95,7 @@ class Model:
         node.attrs[new_name] = node.attrs.pop(attr_name)
 
     def _change_attr_value(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_id'] # FIXME use ID
+        node_id = edit_json['node_id']
         attr_name = edit_json['attr_name']
         new_value = edit_json['new_value']
 
@@ -116,7 +107,7 @@ class Model:
         pass
 
     def _add_attr(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_id'] # FIXME use ID
+        node_id = edit_json['node_id']
         attr_name = edit_json['attr_name']
         attr_value = edit_json['attr_value']
         attr_type = edit_json['attr_type'] # FIXME unused
@@ -125,9 +116,96 @@ class Model:
         node.attrs[attr_name] = attr_value
 
     def _remove_attr(self, edit_json: Dict[str, Any]):
-        node_id = edit_json['node_id'] # FIXME use ID
+        node_id = edit_json['node_id']
         attr_name = edit_json['attr_name']
 
         node = self._get_node_by_id(node_id)
         del node.attrs[attr_name]
 
+    def _add_node(self, edit_json: Dict[str, Any]):
+        node_id   = edit_json['node_id']
+        node_name = edit_json['node_name']
+        node_op   = edit_json['node_op']
+
+        node = gs.Node(node_op, node_name)
+        self.model.nodes.append(node)
+        self.nodes[node_id] = node
+
+    def _remove_node(self, edit_json: Dict[str, Any]):
+        node_id = edit_json['node_id']
+        node = self.nodes.pop(node_id)
+        self.model.nodes.remove(node)
+
+    def _change_node_name(self, edit_json: Dict[str, Any]):
+        node_id  = edit_json['node_id']
+        new_name = edit_json['new_name']
+
+        node = self.nodes[node_id]
+        node.name = new_name
+
+    def _change_node_op(self, edit_json: Dict[str, Any]):
+        node_id = edit_json['node_id']
+        new_op  = edit_json['new_op']
+
+        node = self.nodes[node_id]
+        node.op = new_op
+
+    def _change_node_description(self, edit_json: Dict[str, Any]):
+        # onnx-graphsurgeon doesn't have node descriptions.
+        pass
+
+    def _add_node_input_output(self, edit_json: Dict[str, Any]):
+        node_id  = edit_json['node_id']
+        io_name  = edit_json['io_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        node = self.nodes[node_id]
+        io_list = node.inputs if is_input else node.outputs
+        io_list.append(io_name)
+
+    def _remove_node_input_output(self, edit_json: Dict[str, Any]):
+        node_id  = edit_json['node_id']
+        io_name  = edit_json['io_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        node = self.nodes[node_id]
+        io_list = node.inputs if is_input else node.outputs
+        io_list.remove(io_name)
+
+    def _change_node_input_output(self, edit_json: Dict[str, Any]):
+        node_id  = edit_json['node_id']
+        old_name = edit_json['old_input_name']
+        new_name = edit_json['new_input_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        node = self.nodes[node_id]
+        io_list = node.inputs if is_input else node.outputs
+        io_list[io_list.index(old_name)] = new_name
+
+    def _change_model_opset(self, edit_json: Dict[str, Any]):
+        opset = edit_json['opset']
+        try:
+            self.model.opset = int(opset)
+        except ValueError as e:
+            print("Failed to cast opset to int: ", e)
+
+    def _change_model_producer(self, edit_json: Dict[str, Any]):
+        # Producer is not supported by onnx-graphsurgeon
+        pass
+
+    def _change_model_description(self, edit_json: Dict[str, Any]):
+        self.model.doc_string = edit_json['description']
+
+    def _add_model_input_output(self, edit_json: Dict[str, Any]):
+        io_name  = edit_json['io_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        io_list = self.model.inputs if is_input else self.model.outputs
+        io_list.append(io_name)
+
+    def _remove_model_input_output(self, edit_json: Dict[str, Any]):
+        io_name  = edit_json['io_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        io_list = self.model.inputs if is_input else self.model.outputs
+        io_list.remove(io_name)
