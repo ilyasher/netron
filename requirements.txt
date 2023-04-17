@@ -1,3 +1,4 @@
 bottle
 onnx
-onnx-graphsurgeon --extra-index-url https://pypi.ngc.nvidia.com
+--extra-index-url https://pypi.ngc.nvidia.com
+onnx-graphsurgeon

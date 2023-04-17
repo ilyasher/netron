@@ -12,15 +12,11 @@ var python = require('./python');
 var grapher = require('./grapher');
 
 var onnx = require('./onnx');
+var client_js = require('./client');
 
 let all_tensors = [];
 let main_view = null;
-
-let has_python = false;
-console.log("hello?");
-fetch('/python_version', {method: "GET"})
-    .then(() => { has_python = true; console.log("We have python!"); })
-    .catch(() => { console.log("We don't have python!"); });
+const client = new client_js.Client();
 
 // Main view of the page includes everything.
 view.View = class {
@@ -109,6 +105,12 @@ view.View = class {
                         enabled: () => this.activeGraph
                     });
                 }
+                file.add({
+                    label: '&Download Model',
+                    accelerator: 'CmdOrCtrl+S',
+                    execute: () => { client.download(this._host) },
+                    enabled: () => this.activeGraph && client.connected
+                });
                 const edit = this._menu.group('&Edit');
                 edit.add({
                     label: '&Add Node',
@@ -116,43 +118,12 @@ view.View = class {
                     execute: () => this.addNode(),
                     enabled: () => this.activeGraph
                 });
-                // FIXME relocate
-                // FIXME remove '|| true'.
-                if (has_python || true) {
-                    edit.add({
-                        label: '&Download Model',
-                        accelerator: 'CmdOrCtrl+S',
-                        execute: () => {
-                            fetch('/model/save', { method: 'POST' })
-                                .then((status) => {
-                                    console.log(status);
-                                    status.blob().then((blob) => {
-                                        const bigBlob = new Blob([ blob ]);
-                                        this._host.export('modified.onnx', bigBlob);
-                                    });
-                                }).catch((e) => { console.log(e); });
-                        },
-                        enabled: () => this.activeGraph
-                    });    
-                }
-                // FIXME relocate
-                if (has_python || true) {
-                    edit.add({
-                        label: '&Cleanup Model',
-                        // accelerator: 'CmdOrCtrl+S',
-                        execute: () => {
-                            fetch('/model/cleanup', { method: 'POST' })
-                                .then((status) => {
-                                    console.log(status);
-                                    status.blob().then((blob) => {
-                                        const bigBlob = new Blob([ blob ]);
-                                        this._host.export('modified.onnx', bigBlob);
-                                    });
-                                }).catch((e) => { console.log(e); });
-                        },
-                        enabled: () => this.activeGraph
-                    });    
-                }
+                edit.add({
+                    label: '&Cleanup Model',
+                    // accelerator: 'CmdOrCtrl+S',
+                    execute: () => { client.cleanup(); },
+                    enabled: () => this.activeGraph && client.connected
+                });
                 edit.add({
                     label: '&Find...',
                     accelerator: 'CmdOrCtrl+F',
@@ -350,6 +321,7 @@ view.View = class {
         for (const node of this.activeGraph.nodes) {
             node.unique_id = id;
             node_ids.push(id);
+            console.log(node.name);
             id++;
         }
     }
@@ -2264,21 +2236,8 @@ view.NodeSidebar = class extends view.Control {
             newAttrProto.name = 'name';
             const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
 
-            if (has_python) {
-                fetch('/model/edit', {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        'action': 'add_attr',
-                        'node_id': node.unique_id,
-                        'attr_name': newAttribute.name,
-                        'attr_value': newAttribute.value,
-                        'attr_type': 'int', // unused
-                    })
-                });
-            }
+            // FIXME: fix attr type.
+            client.add_attr(node.unique_id, newAttribute.name, newAttribute.value, 'int');
 
             node.attributes.push(newAttribute);
             this._addAttribute(newAttribute.name, newAttribute);
@@ -2685,19 +2644,7 @@ view.AttributeView = class extends view.ValueView {
             const i = this._node.attributes.indexOf(this._attribute);
             this._node.attributes.splice(i, 1);
 
-            if (has_python) {
-                fetch('/model/edit', {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        'action': 'remove_attr',
-                        'node_id': this._node.unique_id,
-                        'attr_name': this._attribute.name,
-                    })
-                });
-            }
+            client.remove_attr(this._node.unique_id, this._attribute.name);
 
             // Delete html element.
             this.remove();
@@ -2857,35 +2804,11 @@ view.AttributeView = class extends view.ValueView {
         // Interpret empty string as "cancel".
         const newValue = this._form.value || this._old_value;
 
-        if (has_python) {
-            if (newName !== this._old_name) {
-                fetch('/model/edit', {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        'action': 'change_attr_name',
-                        'node_id': this._node.unique_id,
-                        'attr_name': this._old_name,
-                        'new_name': newName,
-                    })
-                }).catch((e) => { console.log(e); });
-            }
-            if (newValue !== this._old_value) {
-                fetch('/model/edit', {
-                    method: 'POST',
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        'action': 'change_attr_value',
-                        'node_id': this._node.unique_id,
-                        'attr_name': this._old_name,
-                        'new_value': newValue,
-                    })
-                }).catch((e) => { console.log(e); });
-            }
+        if (newName !== this._old_name) {
+            client.change_attr_name(this._node.unique_id, this._old_name, newName);
+        }
+        if (newValue !== this._old_value) {
+            client.change_attr_name(this._node.unique_id, this._old_name, newValue);
         }
 
         // Delete form
@@ -5336,15 +5259,7 @@ view.ModelFactoryService = class {
     }
 
     open(context) {
-        if (has_python) {
-            // Send ONNX file to server.
-            const form = new FormData();
-            form.append('file', context.file);
-            fetch('/model/open', {
-                method: 'POST',
-                body: form
-            }).catch((e) => { console.log(e); });    
-        }
+        client.open(context.file);
 
         return this._openSignature(context).then((context) => {
             const modelContext = new view.ModelContext(context);
