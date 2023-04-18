@@ -2515,7 +2515,10 @@ view.ValueTextView = class {
                                 item.className = 'sidebar-view-item-value-line';
                                 form.remove();
 
-                                editAction(newValue);
+                                const success = editAction(newValue);
+                                if (success === false) {
+                                    item.innerText = oldValue;
+                                }
                             }
                         })
                     }
@@ -3093,8 +3096,13 @@ view.ModelSidebar = class extends view.Control {
             client.change_model_description(newValue);
         }));
         this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, (newValue) => {
-            model.opset = newValue;
-            // TODO: convert to number.
+            const asInt = parseInt(newValue);
+            if (asInt.toString() !== newValue) {
+                alert('Opset must be an integer.');
+                // Returning false will revert the text in the ValueTextView to the old value.
+                return false;
+            }
+            model.opset = asInt;
             client.change_model_opset(newValue);
         }));
         for (const entry of model.metadata) {

@@ -23,7 +23,7 @@ client.Client = class {
             method: 'POST',
             body: form
         })
-        .catch((e) => { this._log_fail(funcName(), e); });
+        .catch((e) => { this._log_fail('open', e); });
     }
 
     download(host) {
@@ -34,7 +34,7 @@ client.Client = class {
                     host.export('modified.onnx', bigBlob);
                 });
             })
-            .catch((e) => { this._log_fail(funcName(), e); });
+            .catch((e) => { this._log_fail('download', e); });
     }
 
     cleanup() {
@@ -42,7 +42,7 @@ client.Client = class {
     }
 
     add_attr(node_id, attr_name, attr_value, attr_type) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('add_attr', {
             'node_id': node_id,
             'attr_name': attr_name,
             'attr_value': attr_value,
@@ -51,14 +51,14 @@ client.Client = class {
     }
 
     remove_attr(node_id, attr_name) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('remove_attr', {
             'node_id': node_id,
             'attr_name': attr_name,
         });
     }
 
     change_attr_name(node_id, attr_name, new_name) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_attr_name', {
             'node_id': node_id,
             'attr_name': attr_name,
             'new_name': new_name,
@@ -66,7 +66,7 @@ client.Client = class {
     }
 
     change_attr_value(node_id, attr_name, new_value) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_attr_value', {
             'node_id': node_id,
             'attr_name': attr_name,
             'new_value': new_value,
@@ -78,7 +78,7 @@ client.Client = class {
     }
 
     add_node(node_id, node_name, node_op) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('add_node', {
             'node_id': node_id,
             'node_name': node_name,
             'node_op': node_op,
@@ -86,34 +86,34 @@ client.Client = class {
     }
 
     remove_node(node_id) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('remove_node', {
             'node_id': node_id,
         });
     }
 
     change_node_name(node_id, new_name) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_node_name', {
             'node_id': node_id,
             'new_name': new_name,
         });
     }
 
     change_node_op(node_id, new_op) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_node_op', {
             'node_id': node_id,
             'new_op': new_op,
         });
     }
 
     change_node_description(node_id, new_description) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_node_description', {
             'node_id': node_id,
             'new_description': new_description,
         });
     }
 
     add_node_input_output(node_id, io_name, input_or_output) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('add_node_input_output', {
             'node_id': node_id,
             'io_name': io_name,
             'input_or_output': input_or_output,
@@ -121,7 +121,7 @@ client.Client = class {
     }
 
     remove_node_input_output(node_id, io_name, input_or_output) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('remove_node_input_output', {
             'node_id': node_id,
             'io_name': io_name,
             'input_or_output': input_or_output,
@@ -129,7 +129,7 @@ client.Client = class {
     }
 
     change_node_input_output(node_id, old_name, new_name, input_or_output) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_node_input_output', {
             'node_id': node_id,
             'old_name': old_name,
             'new_name': new_name,
@@ -138,40 +138,35 @@ client.Client = class {
     }
 
     change_model_opset(opset) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_model_opset', {
             'opset': opset,
         });
     }
 
     change_model_producer(producer) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_model_producer', {
             'producer': producer,
         });
     }
 
     change_model_description(description) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('change_model_description', {
             'description': description,
         });
     }
 
     add_model_input_output(io_name, input_or_output) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('add_model_input_output', {
             'io_name': io_name,
             'input_or_output': input_or_output,
         });
     }
 
     remove_model_input_output(io_name, input_or_output) {
-        this._do_model_edit(funcName(), {
+        this._do_model_edit('remove_model_input_output', {
             'io_name': io_name,
             'input_or_output': input_or_output,
         });
-    }
-
-    // Helper function which returns the caller function's name.
-    funcName() {
-        return funcName.caller.name;
     }
 
     // Helper function to send a model edit to the server.
