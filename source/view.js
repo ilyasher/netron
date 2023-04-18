@@ -2969,7 +2969,7 @@ view.ArgumentView = class extends view.ValueView {
     }
 
     beginEdit() {
-        // TODO: only if input is tensor
+        // TODO: Also allow creating initializer input.
         this._editing = true;
         this._edit_button.innerText = 'done';
         let selectHTML = 'name: ' + '<b>' + '<select name="tensors">';

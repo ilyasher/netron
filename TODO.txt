@@ -9,7 +9,6 @@
 - TODOs and FIXMEs
 	- Proper implementation of changing attribute types.
 		- Special treatment of 'DataType' attribute type.
-	- Only allow editing input tensor if it is actually a tensor (and not an initializer).
 
 
 # Other
@@ -23,5 +22,6 @@
 		- Probably involves adding new methods to grapher.js
 		- Don't show spinny wheel when a node is removed.
 	- Center on edited node after refreshing graph when editing inputs/outputs.
+	- Allow creating initializers for tensor inputs.
 - Smarter ONNX ops
 	- When changing a node op, automatically create attributes/inputs to match.
