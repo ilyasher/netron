@@ -105,13 +105,6 @@ client.Client = class {
         });
     }
 
-    change_node_op(node_id, new_op) {
-        this._do_model_edit(funcName(), {
-            'node_id': node_id,
-            'new_op': new_op,
-        });
-    }
-
     change_node_description(node_id, new_description) {
         this._do_model_edit(funcName(), {
             'node_id': node_id,

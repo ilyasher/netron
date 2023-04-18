@@ -299,6 +299,9 @@ view.View = class {
         const graph = this.activeGraph;
         graph._nodes.push(newNode);
 
+        // Tell the server we are adding a node.
+        client.add_node(newNode.unique_id, newNode.name, newNode.type.name);
+
         // TODO: instead of re-rendering the entire graph, is it possible to just render a new node?
         // Add node to the display graph
         // const viewGraph = this._graph;
@@ -2200,14 +2203,24 @@ view.NodeSidebar = class extends view.Control {
         if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
             showDocumentation = {};
             showDocumentation.text = type.nodes ? '\u0192': '?';
+            // FIXME update when node type changes
             showDocumentation.callback = () => {
                 this.emit('show-documentation', null);
             };
         }
-        this._addProperty('type', new view.ValueTextView(this._host, node.type.identifier || node.type.name, showDocumentation, (newValue) => { nodeView.updateType(newValue); }));
+        this._addProperty('type', new view.ValueTextView(this._host, node.type.name, showDocumentation, (newType) => {
+            nodeView.updateType(newType);
+            client.change_node_op(node.unique_id, newType);
+        }));
         // this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
-        this._addProperty('name', new view.ValueTextView(this._host, node.name, null, (newValue) => { nodeView.updateName(newValue); }));
-        this._addProperty('description', new view.ValueTextView(this._host, node.description, null, (newValue) => { node.description = newValue; }));
+        this._addProperty('name', new view.ValueTextView(this._host, node.name, null, (newName) => {
+            nodeView.updateName(newName);
+            client.change_node_name(node.unique_id, newName);
+        }));
+        this._addProperty('description', new view.ValueTextView(this._host, node.description, null, (newValue) => {
+            node.description = newValue;
+            client.change_node_description(node.unique_id, newValue);
+        }));
         this._addCenteredButton('Delete Node', this._properties_div, () => {
             // Confirm with user.
             if (!this._host.confirm("Delete this " + node.type.name + " node?", '')) {
@@ -2223,6 +2236,9 @@ view.NodeSidebar = class extends view.Control {
                 }
             }
 
+            // Tell the server that this node is deleted.
+            client.remove_node(node.unique_id);
+
             // TODO: Don't show the spinny wheel.
             main_view._reload();
         });
@@ -2234,7 +2250,7 @@ view.NodeSidebar = class extends view.Control {
             const newAttrProto = new onnx.proto.AttributeProto();
             newAttrProto.type = onnx.AttributeType.INT;
             newAttrProto.name = 'name';
-            const newAttribute = new onnx.Attribute(null, node.type.identifier, '', newAttrProto);
+            const newAttribute = new onnx.Attribute(null, node.type.name, '', newAttrProto);
 
             // FIXME: fix attr type.
             client.add_attr(node.unique_id, newAttribute.name, newAttribute.value, 'int');
@@ -2261,6 +2277,9 @@ view.NodeSidebar = class extends view.Control {
 
             node.inputs.push(newInput);
             this._addInput(newInput.name, newInput);
+
+            // Tell the server that a new input is added.
+            client.add_node_input_output(node.unique_id, newInput.name, 'input');
         });
         for (const input of node.inputs) {
             this._addInput(input.name, input);
@@ -2808,7 +2827,7 @@ view.AttributeView = class extends view.ValueView {
             client.change_attr_name(this._node.unique_id, this._old_name, newName);
         }
         if (newValue !== this._old_value) {
-            client.change_attr_name(this._node.unique_id, this._old_name, newValue);
+            client.change_attr_value(this._node.unique_id, this._old_name, newValue);
         }
 
         // Delete form
@@ -3059,10 +3078,19 @@ view.ModelSidebar = class extends view.Control {
         this._elements = [];
 
         this._addProperty('format', new view.ValueTextView(this._host, model.format));
-        this._addProperty('producer', new view.ValueTextView(this._host, model.producer, null, (newValue) => { model.producer = newValue; }));
-        this._addProperty('model description', new view.ValueTextView(this._host, model.description, null, (newValue) => { model.description = newValue; }));
-        // TODO: convert to number.
-        this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, null, (newValue) => { model.opset = newValue; }));
+        this._addProperty('producer', new view.ValueTextView(this._host, model.producer, null, (newValue) => {
+            model.producer = newValue;
+            client.change_model_producer(newValue);
+        }));
+        this._addProperty('model description', new view.ValueTextView(this._host, model.description, null, (newValue) => {
+            model.description = newValue;
+            client.change_model_description(newValue);
+        }));
+        this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, null, (newValue) => {
+            model.opset = newValue;
+            // TODO: convert to number.
+            client.change_model_opset(newValue);
+        }));
         for (const entry of model.metadata) {
             this._addProperty(entry.name, new view.ValueTextView(this._host, entry.value, null, (newValue) => { entry.value = newValue; }));
         }
