@@ -443,6 +443,7 @@ onnx.Graph = class {
         this._description = graph.doc_string || '';
 
         context = new onnx.GraphContext(context, graph.node);
+        this._context = context;
 
         for (const initializer of graph.initializer) {
             const tensor = context.tensor(initializer.name);

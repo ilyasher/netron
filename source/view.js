@@ -1771,13 +1771,13 @@ view.Node = class extends grapher.Node {
     }
 
     updateName(newValue) {
+        // FIXME: updateName() and updateType() probably shouldn't be responsible for changing the node data.
         this._node_data.name = newValue;
         this._title.content = this.determineTitle();
         this.update();
     }
 
     updateType(newValue) {
-        // TODO: also have to fix documentation to point to the new type
         this._node_data.type.name = newValue;
         this._title.content = this.determineTitle();
         this.update();
@@ -2198,26 +2198,32 @@ view.NodeSidebar = class extends view.Control {
         this._outputs_div = this._host.document.createElement('div');
         this._elements = [this._properties_div, this._attributes_div, this._inputs_div, this._outputs_div];
 
-        let showDocumentation = null;
         const type = node.type;
-        if (type && (type.description || type.inputs || type.outputs || type.attributes)) {
-            showDocumentation = {};
-            showDocumentation.text = type.nodes ? '\u0192': '?';
-            // FIXME update when node type changes
-            showDocumentation.callback = () => {
-                this.emit('show-documentation', null);
-            };
+        const showDocumentation = {};
+        showDocumentation.text = type.nodes ? '\u0192': '?';
+        showDocumentation.callback = () => {
+            this.emit('show-documentation', null);
+        };
+        if (!(type.description || type.inputs || type.outputs || type.attributes)) {
+            type.description = 'Unknown Type.';
         }
-        this._addProperty('type', new view.ValueTextView(this._host, node.type.name, showDocumentation, (newType) => {
+        this._addProperty('type', new view.ValueTextView(this._host, node.type.name, (newType) => {
             nodeView.updateType(newType);
+            const onnxTypeMetadata = main_view.activeGraph._context.metadata;
+            const newTypeWithMetadata = onnxTypeMetadata.type(newType);
+            if (newTypeWithMetadata) {
+                node.type = newTypeWithMetadata;
+            } else {
+                node.type = {name: newType, domain: node.type.domain, description: 'Unknown Type.'};
+            }
             client.change_node_op(node.unique_id, newType);
-        }));
+        }, showDocumentation));
         // this._addProperty('module', new view.ValueTextView(this._host, node.type.module));
-        this._addProperty('name', new view.ValueTextView(this._host, node.name, null, (newName) => {
+        this._addProperty('name', new view.ValueTextView(this._host, node.name, (newName) => {
             nodeView.updateName(newName);
             client.change_node_name(node.unique_id, newName);
         }));
-        this._addProperty('description', new view.ValueTextView(this._host, node.description, null, (newValue) => {
+        this._addProperty('description', new view.ValueTextView(this._host, node.description, (newValue) => {
             node.description = newValue;
             client.change_node_description(node.unique_id, newValue);
         }));
@@ -2467,7 +2473,7 @@ view.SelectView = class extends view.Control {
 // We can add new icons here.
 view.ValueTextView = class {
 
-    constructor(host, value, action, editAction) {
+    constructor(host, value, editAction, action) {
         this._host = host;
         this._elements = [];
         const element = this._host.document.createElement('div');
@@ -3078,21 +3084,21 @@ view.ModelSidebar = class extends view.Control {
         this._elements = [];
 
         this._addProperty('format', new view.ValueTextView(this._host, model.format));
-        this._addProperty('producer', new view.ValueTextView(this._host, model.producer, null, (newValue) => {
+        this._addProperty('producer', new view.ValueTextView(this._host, model.producer, (newValue) => {
             model.producer = newValue;
             client.change_model_producer(newValue);
         }));
-        this._addProperty('model description', new view.ValueTextView(this._host, model.description, null, (newValue) => {
+        this._addProperty('model description', new view.ValueTextView(this._host, model.description, (newValue) => {
             model.description = newValue;
             client.change_model_description(newValue);
         }));
-        this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, null, (newValue) => {
+        this._addProperty('ONNX opset', new view.ValueTextView(this._host, model.opset, (newValue) => {
             model.opset = newValue;
             // TODO: convert to number.
             client.change_model_opset(newValue);
         }));
         for (const entry of model.metadata) {
-            this._addProperty(entry.name, new view.ValueTextView(this._host, entry.value, null, (newValue) => { entry.value = newValue; }));
+            this._addProperty(entry.name, new view.ValueTextView(this._host, entry.value, (newValue) => { entry.value = newValue; }));
         }
         // TODO support these
         // if (model.name) {
@@ -3131,7 +3137,7 @@ view.ModelSidebar = class extends view.Control {
             // if (graph.tags) {
             //     this._addProperty('tags', new view.ValueTextView(this._host, graph.tags));
             // }
-            this._addProperty('graph description', new view.ValueTextView(this._host, graph.description, null, (newValue) => { graph.description = newValue; }));
+            this._addProperty('graph description', new view.ValueTextView(this._host, graph.description, (newValue) => { graph.description = newValue; }));
 
             // TODO: remove if-statements (always show inputs and outputs)
             if (Array.isArray(graph.inputs) && graph.inputs.length > 0) {
