@@ -172,8 +172,8 @@ class Model:
 
     def _change_node_input_output(self, edit_json: Dict[str, Any]):
         node_id  = edit_json['node_id']
-        old_name = edit_json['old_input_name']
-        new_name = edit_json['new_input_name']
+        old_name = edit_json['old_name']
+        new_name = edit_json['new_name']
         is_input = edit_json['input_or_output'] == 'input'
 
         node = self.nodes[node_id]
