@@ -2347,6 +2347,7 @@ view.NodeSidebar = class extends view.Control {
             this.emit('error', tensor);
         });
         const item = new view.NameValueView(this._host, name, value);
+        value.attachNameValueView(item);
         this._inputs.push(item);
 
         const button = this._inputs_div.childNodes[this._inputs_div.childElementCount - 1];
@@ -2873,6 +2874,12 @@ view.ParameterView = class extends view.Control {
         }
     }
 
+    attachNameValueView(nameValueView) {
+        for (const item of this._items) {
+            item.attachNameValueView(nameValueView);
+        }
+    }
+
     render() {
         return this._elements;
     }
@@ -2917,6 +2924,34 @@ view.ArgumentView = class extends view.ValueView {
         this._element.appendChild(this._edit_button);
         this._form = null;
 
+        this._remove_button = this._host.document.createElement('div');
+        this._remove_button.className = 'sidebar-view-item-value-edit-button';
+        this._remove_button.innerText = 'remove';
+        this._remove_button.style.display = 'none';
+        this._remove_button.addEventListener('click', () => {
+            if (!this._host.confirm("Delete input '" + this._tensor_name + "'?", '')) {
+                return;
+            }
+
+            // Permanently remove attribute from node.
+            for (let i = 0; i < this._node.inputs.length; i++) {
+                const tensor = this._node.inputs[i];
+                if (tensor.arguments[0].name == this._tensor_name) {
+                    this._node.inputs.splice(i, 1);
+                    break;
+                }
+            }
+
+            client.remove_node_input_output(this._node.unique_id, this._tensor_name);
+
+            // Delete html element.
+            this.remove();
+
+            // Redraw graph
+            main_view.renderGraph(main_view._model, main_view.activeGraph);
+        });
+        this._element.appendChild(this._remove_button);
+
         if (type || initializer || quantization || location) {
             this._expander = this._host.document.createElement('div');
             this._expander.className = 'sidebar-view-item-value-expander';
@@ -2957,10 +2992,28 @@ view.ArgumentView = class extends view.ValueView {
         return this._element;
     }
 
+    // Ugly way for this AttributeView to be able to contol the name element
+    // (to edit the attribute name and for deleting this attribute.)
+    attachNameValueView(nameValueView) {
+        this._name_value_view = nameValueView;
+    }
+
+    remove() {
+        this._name_value_view.remove();
+    }
+
     beginEdit() {
         // TODO: Also allow creating initializer input.
         this._editing = true;
         this._edit_button.innerText = 'done';
+        this._remove_button.style.display = 'block';
+        if (this._expander) {
+            if (this._expander.innerText == '-') {
+                this.toggle();
+            }
+            this._expander.style.display = 'none';
+        }
+
         let selectHTML = 'name: ' + '<b>' + '<select name="tensors">';
         for (const tensor of all_tensors) {
             // I hope tensor names can't contain quotes...
@@ -2978,6 +3031,10 @@ view.ArgumentView = class extends view.ValueView {
     endEdit() {
         this._editing = false;
         this._edit_button.innerText = 'edit';
+        this._remove_button.style.display = 'none';
+        if (this._expander) {
+            this._expander.style.display = 'block';
+        }
 
         // FIXME awful
         const newTensorName = this._name_line.childNodes[1].childNodes[0].value;
@@ -3061,7 +3118,7 @@ view.ArgumentView = class extends view.ValueView {
                 }
             } else {
                 this._expander.innerText = '+';
-                while (this._element.childElementCount > 3) {
+                while (this._element.childElementCount > 4) {
                     this._element.removeChild(this._element.lastChild);
                 }
             }

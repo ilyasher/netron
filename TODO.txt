@@ -2,7 +2,6 @@
 - Add support for remaining basic edits in view.js
 	- Add node output
 	- Change node output
-	- Remove node input
 	- Remove node output
 	- Add model input
 	- Add model output
@@ -23,5 +22,6 @@
 		- Don't show spinny wheel when a node is removed.
 	- Center on edited node after refreshing graph when editing inputs/outputs.
 	- Allow creating initializers for tensor inputs.
+	- Refactor view.js to remove duplicate code etc
 - Smarter ONNX ops
 	- When changing a node op, automatically create attributes/inputs to match.
