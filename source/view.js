@@ -2259,8 +2259,6 @@ view.NodeSidebar = class extends view.Control {
 
         this._addHeader('Inputs', this._inputs_div);
         this._addCenteredButton('New Input', this._inputs_div, () => {
-            console.log("Adding new input!");
-
             const arg = new onnx.Argument('input tensor name');
             const newInput = new onnx.Parameter('', [arg]);
 
@@ -2278,6 +2276,15 @@ view.NodeSidebar = class extends view.Control {
         this._addHeader('Outputs', this._outputs_div);
         this._addCenteredButton('New Output', this._outputs_div, () => {
             console.log("Adding new output!");
+            const arg = new onnx.Argument('output tensor name');
+            const newOutput = new onnx.Parameter('', [arg]);
+
+            node.outputs.push(newOutput);
+            const nameValueView = this._addOutput(newOutput.name, newOutput);
+            nameValueView.value._items[0].beginEdit();
+
+            // Tell the server that a new input is added.
+            client.add_node_input_output(node.unique_id, arg.name, 'output');
         });
         for (const output of node.outputs) {
             this._addOutput(output.name, output);
@@ -2356,11 +2363,15 @@ view.NodeSidebar = class extends view.Control {
     }
 
     _addOutput(name, output) {
-        const item = new view.NameValueView(this._host, name, new view.ParameterView(this._host, output));
+        const value = new view.ParameterView(this._host, output);
+        const item = new view.NameValueView(this._host, name, value);
+        value.attachNode(this._node);
+        value.attachNameValueView(item);
         this._outputs.push(item);
 
         const button = this._outputs_div.childNodes[this._outputs_div.childElementCount - 1];
         this._outputs_div.insertBefore(item.render(), button);
+        return item;
     }
 
     toggleInput(name) {
@@ -2849,13 +2860,13 @@ view.AttributeView = class extends view.ValueView {
 
 view.ParameterView = class extends view.Control {
 
-    constructor(host, list) {
+    constructor(host, list, input_or_output) {
         super();
         this._list = list;
         this._elements = [];
         this._items = [];
         for (const argument of list.arguments) {
-            const item = new view.ArgumentView(host, argument);
+            const item = new view.ArgumentView(host, argument, input_or_output);
             item.on('export-tensor', (sender, tensor) => {
                 this.emit('export-tensor', tensor);
             });
@@ -2893,10 +2904,12 @@ view.ParameterView = class extends view.Control {
 
 view.ArgumentView = class extends view.ValueView {
 
-    constructor(host, argument) {
+    constructor(host, argument, input_or_output) {
         super();
         this._host = host;
         this._argument = argument;
+        this._is_input = input_or_output === 'input';
+        this._input_or_output = input_or_output;
 
         this._element = this._host.document.createElement('div');
         this._element.className = 'sidebar-view-item-value';
@@ -2929,20 +2942,21 @@ view.ArgumentView = class extends view.ValueView {
         this._remove_button.innerText = 'remove';
         this._remove_button.style.display = 'none';
         this._remove_button.addEventListener('click', () => {
-            if (!this._host.confirm("Delete input '" + this._tensor_name + "'?", '')) {
+            if (!this._host.confirm("Delete " + this._input_or_output + " '" + this._tensor_name + "'?", '')) {
                 return;
             }
 
             // Permanently remove attribute from node.
-            for (let i = 0; i < this._node.inputs.length; i++) {
-                const tensor = this._node.inputs[i];
+            const io_list = this._is_input ? this._node.inputs : this._node.outputs;
+            for (let i = 0; i < io_list.length; i++) {
+                const tensor = io_list[i];
                 if (tensor.arguments[0].name == this._tensor_name) {
-                    this._node.inputs.splice(i, 1);
+                    io_list.splice(i, 1);
                     break;
                 }
             }
 
-            client.remove_node_input_output(this._node.unique_id, this._tensor_name);
+            client.remove_node_input_output(this._node.unique_id, this._tensor_name, this._input_or_output);
 
             // Delete html element.
             this.remove();
@@ -3049,15 +3063,16 @@ view.ArgumentView = class extends view.ValueView {
             }
         }
         const node = this._node;
-        for (let i = 0; i < node.inputs.length; i++) {
-            const oldTensor = node.inputs[i];
+        const io_list = this._is_input ? node.inputs : node.outputs;
+        for (let i = 0; i < io_list.length; i++) {
+            const oldTensor = io_list[i];
             if (oldTensor.arguments[0].name == this._tensor_name) {
-                node.inputs[i] = newTensor;
+                io_list[i] = newTensor;
                 break;
             }
         }
-        // Notify server that we changed the input name.
-        client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, 'input');
+        // Notify server that we changed the input or output name.
+        client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, this._input_or_output);
 
         this._tensor_name = newTensorName;
 
