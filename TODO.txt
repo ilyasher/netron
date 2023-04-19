@@ -9,8 +9,6 @@
 - TODOs and FIXMEs
 	- Proper implementation of changing attribute types.
 		- Special treatment of 'DataType' attribute type.
-	- Fix changing node input (incorrect use of graphsurgeon)
-
 
 # Other
 - Add support for advanced edits in server & client
@@ -18,6 +16,7 @@
 	- Shape inference
 	- Add validation using ONNX runtime
 		- If error exists, it is reported in the GUI.
+	- Reorder Node/Model inputs/outputs
 - TODOs and FIXMEs
 	- Faster visual graph updates when nodes are added/removed
 		- Probably involves adding new methods to grapher.js

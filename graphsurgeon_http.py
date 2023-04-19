@@ -178,8 +178,9 @@ class Model:
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
 
-        # FIXME need to add a gs.Variabe / gs.Tensor
-        io_list.append(io_name)
+        tensors = self.model.tensors()
+        new_tensor = tensors.get(io_name, gs.Variable(name=io_name))
+        io_list.append(new_tensor)
 
     def _remove_node_input_output(self, edit_json: Dict[str, Any]):
         node_id  = edit_json['node_id']
@@ -189,8 +190,14 @@ class Model:
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
 
-        # FIXME need to remove a gs.Variabe / gs.Tensor
-        io_list.remove(io_name)
+        tensors = self.model.tensors()
+        for i in range(len(io_list)):
+            if io_list[i].name == io_name:
+                io_list.pop(i)
+                break
+        else:
+            raise ValueError(f'No tensor with name {io_name}')
+
 
     def _change_node_input_output(self, edit_json: Dict[str, Any]):
         node_id  = edit_json['node_id']
@@ -201,8 +208,15 @@ class Model:
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
 
-        # FIXME need to change a gs.Variabe / gs.Tensor
-        io_list[io_list.index(old_name)] = new_name
+        tensors = self.model.tensors()
+        new_tensor = tensors.get(new_name, gs.Variable(new_name))
+        for i, old_tensor in enumerate(io_list):
+            if old_tensor.name == old_name:
+                io_list[i] = new_tensor
+                break
+        else:
+            raise ValueError(f'No tensor with name {old_name}')
+
 
     def _change_model_opset(self, edit_json: Dict[str, Any]):
         opset = edit_json['opset']

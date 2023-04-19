@@ -2265,10 +2265,11 @@ view.NodeSidebar = class extends view.Control {
             const newInput = new onnx.Parameter('', [arg]);
 
             node.inputs.push(newInput);
-            this._addInput(newInput.name, newInput);
+            const nameValueView = this._addInput(newInput.name, newInput);
+            nameValueView.value._items[0].beginEdit();
 
             // Tell the server that a new input is added.
-            client.add_node_input_output(node.unique_id, newInput.name, 'input');
+            client.add_node_input_output(node.unique_id, arg.name, 'input');
         });
         for (const input of node.inputs) {
             this._addInput(input.name, input);
@@ -2350,6 +2351,7 @@ view.NodeSidebar = class extends view.Control {
 
         const button = this._inputs_div.childNodes[this._inputs_div.childElementCount - 1];
         this._inputs_div.insertBefore(item.render(), button);
+        return item;
     }
 
     _addOutput(name, output) {
@@ -2405,6 +2407,10 @@ view.NameValueView = class {
 
     get name() {
         return this._name;
+    }
+
+    get value() {
+        return this._value;
     }
 
     render() {
@@ -2993,6 +2999,8 @@ view.ArgumentView = class extends view.ValueView {
                 break;
             }
         }
+        // Notify server that we changed the input name.
+        client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, 'input');
 
         this._tensor_name = newTensorName;
 
