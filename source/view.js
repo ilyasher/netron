@@ -312,23 +312,6 @@ view.View = class {
         // TODO: open NodeProperties sidebar for the node.
     }
 
-    // TODO maybe this is not the best place to put it.
-    assignNodeIDs() {
-        // Assign unique ID values to all the nodes, so that we can easily reference them by ID
-        // when communicating node edits to the server.
-
-        // Assign the initial nodes ID values of 0..N-1 based on their order in the node list.
-        // The python server will do the same, so don't change this unless you also change the python code.
-        const node_ids = [];
-        let id = 0;
-        for (const node of this.activeGraph.nodes) {
-            node.unique_id = id;
-            node_ids.push(id);
-            console.log(node.name);
-            id++;
-        }
-    }
-
     get model() {
         return this._model;
     }
@@ -745,7 +728,7 @@ view.View = class {
             const lastGraphs = this._graphs;
             this._model = model;
             this._graphs = graphs;
-            this.assignNodeIDs();
+            client.assign_node_ids(this.activeGraph.nodes);
             return this.renderGraph(this._model, this.activeGraph).then(() => {
                 if (this._page !== 'default') {
                     this.show('default');
@@ -3145,7 +3128,9 @@ view.ModelSidebar = class extends view.Control {
             // if (graph.tags) {
             //     this._addProperty('tags', new view.ValueTextView(this._host, graph.tags));
             // }
-            this._addProperty('graph description', new view.ValueTextView(this._host, graph.description, (newValue) => { graph.description = newValue; }));
+            // this._addProperty('graph description', new view.ValueTextView(this._host, graph.description, (newValue) => {
+            //     graph.description = newValue;
+            // }));
 
             // TODO: remove if-statements (always show inputs and outputs)
             if (Array.isArray(graph.inputs) && graph.inputs.length > 0) {

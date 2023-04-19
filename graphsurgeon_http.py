@@ -15,9 +15,8 @@ class Model:
     def __init__(self, model: gs.Graph):
         self.model: gs.Graph = model
 
-        # Initial nodes have ids of 0..N-1
-        # This is a convention we share with the Javascript client so that we don't
-        # need to communicate an initial mapping of IDs.
+        # Mapping of ID -> Node used to address nodes.
+        # Should be populated by client with assign_node_ids().
         self.nodes: Dict[int, gs.Node] = {id: node for id, node in enumerate(model.nodes)}
 
         # TODO: do we need a lock?
@@ -31,6 +30,24 @@ class Model:
     def from_bytes(cls, bytes: bytes) -> "Model":
         return Model(gs.import_onnx(onnx.load_model_from_string(bytes)))
 
+    ################ Setup / Initialization
+    def assign_node_ids(self, id_mapping_json):
+        self.nodes = dict()
+        json_node_idx = 0
+        for node in self.model.nodes:
+            [node_id, op_type, node_inputs, node_outputs] = id_mapping_json[json_node_idx]
+            gs_node_inputs = [tensor.name for tensor in node.inputs]
+            gs_node_outputs = [tensor.name for tensor in node.outputs]
+            if node.op == op_type and \
+               node_inputs == gs_node_inputs and \
+               node_outputs == gs_node_outputs:
+                self.nodes[node_id] = node
+                json_node_idx += 1
+        if len(self.nodes) != len(id_mapping_json):
+            raise RuntimeError(f'Only found {len(self.nodes)} matching nodes ' +\
+                'out of the required {len(id_mapping_json)}.')
+
+
     ################ Serialization & Saving
     def to_bytes(self) -> bytes:
         return gs.export_onnx(self.model).SerializeToString()
@@ -41,6 +58,7 @@ class Model:
     ################ Advanced Graphsurgeon Edits.
     def cleanup(self):
         self.model.cleanup()
+
 
     ############### Basic Graphsurgeon Edits.
     def edit(self, edit_json: Dict[str, Any]):

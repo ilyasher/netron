@@ -26,6 +26,37 @@ client.Client = class {
         .catch((e) => { this._log_fail('open', e); });
     }
 
+    assign_node_ids(nodes) {
+        // Assign unique ID values to all the nodes, so that we can easily reference them by ID
+        // when communicating node edits to the server.
+
+        // IDs stored as [id, node.type.name, node.inputs, node.outputs].
+        const id_mapping = [];
+
+        const get_name = (x) => { return x.arguments[0].name };
+
+        const node_ids = [];
+        let id = 0;
+        for (const node of nodes) {
+            node.unique_id = id;
+            node_ids.push(id);
+            const inputs = node.inputs.map(get_name);
+            const outputs = node.outputs.map(get_name);
+            id_mapping.push([id, node.type.name, inputs, outputs]);
+            id++;
+        }
+
+        // Send IDs to the server.
+        fetch('/model/assign_node_ids', {
+            method: 'POST',
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(id_mapping)
+        })
+        .catch((e) => { this._log_fail('assign_node_ids', e); });
+    }
+
     download(host) {
         fetch('/model/save', { method: 'POST' })
             .then((status) => {

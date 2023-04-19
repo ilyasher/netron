@@ -623,6 +623,10 @@ onnx.Node = class {
         return this._description;
     }
 
+    set description(x) {
+        this._description = x;
+    }
+
     get attributes() {
         return this._attributes;
     }

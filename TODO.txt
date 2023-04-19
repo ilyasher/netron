@@ -9,6 +9,7 @@
 - TODOs and FIXMEs
 	- Proper implementation of changing attribute types.
 		- Special treatment of 'DataType' attribute type.
+	- Fix changing node input (incorrect use of graphsurgeon)
 
 
 # Other
