@@ -177,6 +177,8 @@ class Model:
 
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
+
+        # FIXME need to add a gs.Variabe / gs.Tensor
         io_list.append(io_name)
 
     def _remove_node_input_output(self, edit_json: Dict[str, Any]):
@@ -186,6 +188,8 @@ class Model:
 
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
+
+        # FIXME need to remove a gs.Variabe / gs.Tensor
         io_list.remove(io_name)
 
     def _change_node_input_output(self, edit_json: Dict[str, Any]):
@@ -196,6 +200,8 @@ class Model:
 
         node = self.nodes[node_id]
         io_list = node.inputs if is_input else node.outputs
+
+        # FIXME need to change a gs.Variabe / gs.Tensor
         io_list[io_list.index(old_name)] = new_name
 
     def _change_model_opset(self, edit_json: Dict[str, Any]):
