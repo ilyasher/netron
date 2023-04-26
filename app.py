@@ -4,7 +4,7 @@
 # Entry point for onnx-graphsurgeon GUI web app.
 ##
 
-from bottle import route, get, post, request, run, static_file
+from bottle import route, get, post, request, run, response, static_file
 import pathlib
 
 from graphsurgeon_http import Model
@@ -20,9 +20,9 @@ def hello():
 @route('/<filename:path>')
 def get_file(filename):
     # Necessary for the website to load static files like CSS, JS, images, etc.
-    response = static_file(filename, root=pathlib.Path(__file__).parent.resolve())
-    response.set_header("Cache-Control", "max-age=0") # no cached files TODO: doesn't work.
-    return response
+    res = static_file(filename, root=pathlib.Path(__file__).parent.resolve())
+    res.set_header("Cache-Control", "max-age=0") # no cached files TODO: doesn't work.
+    return res
 
 @get('/python_version')
 def has_python():
@@ -64,7 +64,6 @@ def save_model():
 
 @get('/model/cleanup')
 def cleanup_model():
-    # TODO
     global model
     model.cleanup()
     return save_model()
@@ -72,9 +71,12 @@ def cleanup_model():
 # TODO: might want to combine this with cleanup_model
 @get('/model/fold_constants')
 def fold_constants():
-    # TODO
     global model
-    model.fold_constants()
+    try:
+        model.fold_constants()
+    except Exception as e:
+        response.status = 400
+        return str(e)
     return save_model()
 
 run(host='localhost', port=8080, debug=True)

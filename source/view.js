@@ -133,7 +133,9 @@ view.View = class {
                     execute: () => {
                         client.fold_constants(this._host)
                             .then((fileContext) => {
-                                this.open(fileContext);
+                                if (fileContext) {
+                                    this.open(fileContext);
+                                }
                             });
                     },
                     enabled: () => this.activeGraph && client.connected
@@ -2499,44 +2501,13 @@ view.ValueTextView = class {
             this._edit = this._host.document.createElement('div');
             this._edit.className = 'sidebar-view-item-value-edit-button';
             this._edit.innerText = 'edit';
+            this._editing = false;
+            this._editAction = editAction;
             this._edit.addEventListener('click', () => {
-                for (const item of element.childNodes) {
-                    if (item.className === 'sidebar-view-item-value-line' || item.className === 'sidebar-view-item-value-line-border') {
-                        let form = this._host.document.createElement('INPUT');
-                        const oldValue = item.innerText;
-                        form.setAttribute("type", "text");
-                        item.className = 'sidebar-view-item-value-line-edit-input';
-                        item.innerText = ''
-                        item.appendChild(form);
-                        form.value = oldValue;
-                        form.focus();
-                        form.addEventListener('keydown', (event) => {
-                            if (event.keyCode === 13 && form === this._host.document.activeElement) {
-                                const newValue = form.value;
-
-                                // Interpret empty string as "cancel".
-                                if (!newValue) {
-                                    item.className = 'sidebar-view-item-value-line';
-                                    item.innerText = oldValue;
-                                    form.remove();
-                                    return;
-                                }
-
-                                console.log("Setting new value to " + newValue);
-                                item.innerText = newValue;
-                                form.value = '';
-
-                                // Delete form
-                                item.className = 'sidebar-view-item-value-line';
-                                form.remove();
-
-                                const success = editAction(newValue);
-                                if (success === false) {
-                                    item.innerText = oldValue;
-                                }
-                            }
-                        })
-                    }
+                if (this._editing) {
+                    this.endEdit();
+                } else {
+                    this.beginEdit();
                 }
             });
             element.appendChild(this._edit);
@@ -2559,6 +2530,9 @@ view.ValueTextView = class {
             line.className = className;
             line.innerText = item;
             element.appendChild(line);
+            if (!this._item) {
+                this._item = line;  // FIXME
+            }
             className = 'sidebar-view-item-value-line-border';
         }
     }
@@ -2568,6 +2542,58 @@ view.ValueTextView = class {
     }
 
     toggle() {
+    }
+
+    beginEdit() {
+        this._edit.innerText = 'done';
+        this._editing = true;
+
+        const item = this._item;
+        let form = this._host.document.createElement('INPUT');
+        const oldValue = item.innerText;
+        form.setAttribute("type", "text");
+        item.className = 'sidebar-view-item-value-line-edit-input';
+        item.innerText = ''
+        item.appendChild(form);
+        form.value = oldValue;
+        form.focus();
+        this._form = form;
+
+        form.addEventListener('keydown', (event) => {
+            if (event.keyCode === 13 && form === this._host.document.activeElement) {
+                this.endEdit();
+            }
+        })
+    }
+
+    endEdit() {
+        this._edit.innerText = 'edit';
+        this._editing = false;
+
+        const form = this._form;
+        const item = this._item;
+        const newValue = form.value;
+
+        // Interpret empty string as "cancel".
+        if (!newValue) {
+            item.className = 'sidebar-view-item-value-line';
+            item.innerText = oldValue;
+            form.remove();
+            return;
+        }
+
+        console.log("Setting new value to " + newValue);
+        item.innerText = newValue;
+        form.value = '';
+
+        // Delete form
+        item.className = 'sidebar-view-item-value-line';
+        form.remove();
+
+        const success = this._editAction(newValue);
+        if (success === false) {
+            item.innerText = oldValue;
+        }
     }
 };
 

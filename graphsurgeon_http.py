@@ -60,7 +60,7 @@ class Model:
         self.model.cleanup()
 
     def fold_constants(self):
-        self.model.fold_constants()
+        self.model.fold_constants(error_ok=False)
 
     ############### Basic Graphsurgeon Edits.
     def edit(self, edit_json: Dict[str, Any]):

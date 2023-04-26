@@ -76,6 +76,10 @@ client.Client = class {
         let blobblob = null; // FIXME
         return fetch(route, { method: 'GET' })
             .then((status) => {
+                if (!status.ok) {
+                    console.log(status);
+                    throw status;
+                }
                 return status.blob()
             })
             .then((blob) => {
@@ -100,18 +104,19 @@ client.Client = class {
                     }
                 };
                 return new FileContext(file, buffer);
-            });
+            })
+            .catch((e) => { e.text().then(text => alert(text)); });
             // .catch((e) => { this._log_fail('cleanup', e); });
     }
 
     cleanup(host) {
-        return this._do_advanced_model_edit(host, '/model/cleanup')
-            .catch((e) => { this._log_fail('cleanup', e); });
+        return this._do_advanced_model_edit(host, '/model/cleanup');
+            // .catch((e) => { this._log_fail('cleanup', e); });
     }
 
     fold_constants(host) {
-        return this._do_advanced_model_edit(host, '/model/fold_constants')
-            .catch((e) => { this._log_fail('fold_constants', e); });
+        return this._do_advanced_model_edit(host, '/model/fold_constants');
+            // .catch((e) => { this._log_fail('fold_constants', e); });
     }
 
     add_attr(node_id, attr_name, attr_value, attr_type) {
