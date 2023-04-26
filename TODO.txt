@@ -8,7 +8,6 @@
 
 # Other
 - Add support for advanced edits in server & client
-	- Graph Cleanup
 	- Shape inference
 	- Add validation using ONNX runtime
 		- If error exists, it is reported in the GUI.

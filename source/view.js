@@ -120,9 +120,18 @@ view.View = class {
                 });
                 edit.add({
                     label: '&Cleanup Model',
-                    // accelerator: 'CmdOrCtrl+S',
                     execute: () => {
                         client.cleanup(this._host)
+                            .then((fileContext) => {
+                                this.open(fileContext);
+                            });
+                    },
+                    enabled: () => this.activeGraph && client.connected
+                });
+                edit.add({
+                    label: '&Fold Constants',
+                    execute: () => {
+                        client.fold_constants(this._host)
                             .then((fileContext) => {
                                 this.open(fileContext);
                             });

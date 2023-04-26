@@ -72,9 +72,9 @@ client.Client = class {
             .catch((e) => { this._log_fail('download', e); });
     }
 
-    cleanup(host) {
+    _do_advanced_model_edit(host, route) {
         let blobblob = null; // FIXME
-        return fetch('/model/cleanup', { method: 'GET' })
+        return fetch(route, { method: 'GET' })
             .then((status) => {
                 return status.blob()
             })
@@ -100,8 +100,18 @@ client.Client = class {
                     }
                 };
                 return new FileContext(file, buffer);
-            })
+            });
+            // .catch((e) => { this._log_fail('cleanup', e); });
+    }
+
+    cleanup(host) {
+        return this._do_advanced_model_edit(host, '/model/cleanup')
             .catch((e) => { this._log_fail('cleanup', e); });
+    }
+
+    fold_constants(host) {
+        return this._do_advanced_model_edit(host, '/model/fold_constants')
+            .catch((e) => { this._log_fail('fold_constants', e); });
     }
 
     add_attr(node_id, attr_name, attr_value, attr_type) {

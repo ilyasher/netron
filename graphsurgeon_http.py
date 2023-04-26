@@ -57,9 +57,10 @@ class Model:
 
     ################ Advanced Graphsurgeon Edits.
     def cleanup(self):
-        self.model.fold_constants() # TEMP
         self.model.cleanup()
 
+    def fold_constants(self):
+        self.model.fold_constants()
 
     ############### Basic Graphsurgeon Edits.
     def edit(self, edit_json: Dict[str, Any]):

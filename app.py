@@ -69,4 +69,12 @@ def cleanup_model():
     model.cleanup()
     return save_model()
 
+# TODO: might want to combine this with cleanup_model
+@get('/model/fold_constants')
+def fold_constants():
+    # TODO
+    global model
+    model.fold_constants()
+    return save_model()
+
 run(host='localhost', port=8080, debug=True)
