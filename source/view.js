@@ -2361,7 +2361,7 @@ view.NodeSidebar = class extends view.Control {
     }
 
     _addInput(name, input) {
-        const value = new view.ParameterView(this._host, input);
+        const value = new view.ParameterView(this._host, input, 'input');
         value.attachNode(this._node);
         value.on('export-tensor', (sender, tensor) => {
             this.emit('export-tensor', tensor);
@@ -2379,7 +2379,7 @@ view.NodeSidebar = class extends view.Control {
     }
 
     _addOutput(name, output) {
-        const value = new view.ParameterView(this._host, output);
+        const value = new view.ParameterView(this._host, output, 'output');
         const item = new view.NameValueView(this._host, name, value);
         value.attachNode(this._node);
         value.attachNameValueView(item);
@@ -3103,16 +3103,32 @@ view.ArgumentView = class extends view.ValueView {
             }
         }
         const node = this._node;
-        const io_list = this._is_input ? node.inputs : node.outputs;
-        for (let i = 0; i < io_list.length; i++) {
-            const oldTensor = io_list[i];
-            if (oldTensor.arguments[0].name == this._tensor_name) {
-                io_list[i] = newTensor;
-                break;
+        if (node)
+        {
+            const io_list = this._is_input ? node.inputs : node.outputs;
+            for (let i = 0; i < io_list.length; i++) {
+                const oldTensor = io_list[i];
+                if (oldTensor.arguments[0].name == this._tensor_name) {
+                    io_list[i] = newTensor;
+                    break;
+                }
             }
+            // Notify server that we changed the input or output name.
+            client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, this._input_or_output);
+        } else {
+            // Graph inputs/outputs
+            const io_list = this._is_input ? main_view.activeGraph.inputs : main_view.activeGraph.outputs;
+            for (let i = 0; i < io_list.length; i++) {
+                const oldTensor = io_list[i];
+                console.log(oldTensor.arguments[0].name, this._tensor_name, newTensor);
+                if (oldTensor.arguments[0].name == this._tensor_name) {
+                    io_list[i] = newTensor;
+                    break;
+                }
+            }
+            // TODO
+            // client.change_node_input_output(this._tensor_name, newTensorName, this._input_or_output);
         }
-        // Notify server that we changed the input or output name.
-        client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, this._input_or_output);
 
         this._tensor_name = newTensorName;
 
@@ -3187,7 +3203,11 @@ view.ModelSidebar = class extends view.Control {
         super();
         this._host = host;
         this._model = model;
-        this._elements = [];
+
+        this._properties_div = this._host.document.createElement('div');
+        this._inputs_div = this._host.document.createElement('div');
+        this._outputs_div = this._host.document.createElement('div');
+        this._elements = [this._properties_div, this._inputs_div, this._outputs_div];
 
         this._addProperty('format', new view.ValueTextView(this._host, model.format));
         this._addProperty('producer', new view.ValueTextView(this._host, model.producer, (newValue) => {
@@ -3252,21 +3272,37 @@ view.ModelSidebar = class extends view.Control {
             //     graph.description = newValue;
             // }));
 
-            // TODO: remove if-statements (always show inputs and outputs)
-            if (Array.isArray(graph.inputs) && graph.inputs.length > 0) {
-                this._addHeader('Inputs');
-                for (const input of graph.inputs) {
-                    this.addArgument(input.name, input);
-                }
+            this._addHeader('Inputs', this._inputs_div);
+            this._addCenteredButton('New Input', this._inputs_div, () => {
+                const arg = new onnx.Argument('input tensor name');
+                const newInput = new onnx.Parameter('', [arg]);
+
+                graph.inputs.push(newInput);
+                const nameValueView = this._addInput(newInput.name, newInput);
+                nameValueView.value._items[0].beginEdit();
+
+                // Tell the server that a new input is added.
+                client.add_model_input_output(arg.name, 'input');
+            });
+            for (const input of graph.inputs) {
+                this._addInput(input.name, input);
             }
-            if (Array.isArray(graph.outputs) && graph.outputs.length > 0) {
-                this._addHeader('Outputs');
-                for (const output of graph.outputs) {
-                    this.addArgument(output.name, output);
-                }
+            this._addHeader('Outputs', this._outputs_div);
+            this._addCenteredButton('New Output', this._outputs_div, () => {
+                const arg = new onnx.Argument('output tensor name');
+                const newOutput = new onnx.Parameter('', [arg]);
+
+                graph.outputs.push(newOutput);
+                const nameValueView = this._addOutput(newOutput.name, newOutput);
+                nameValueView.value._items[0].beginEdit();
+
+                // Tell the server that a new input is added.
+                client.remove_model_input_output(arg.name, 'output');
+            });
+            for (const output of graph.outputs) {
+                this._addOutput(output.name, output);
             }
         }
-
         const separator = this._host.document.createElement('div');
         separator.className = 'sidebar-view-separator';
         this._elements.push(separator);
@@ -3276,23 +3312,62 @@ view.ModelSidebar = class extends view.Control {
         return this._elements;
     }
 
-    _addHeader(title) {
+    // FIXME lots of code duplication between NodeSidebar and ModelSidebar
+    _addCenteredButton(text, div_element, onClick) {
+        const addAttributeButton = this._host.document.createElement('button');
+        addAttributeButton.type = 'button';
+        addAttributeButton.innerText = text;
+        addAttributeButton.addEventListener('click', onClick);
+
+        // Wrapper to make our button work with NameViewValue.
+        const ButtonValue = class {
+            constructor(button) {
+                this._button = button;
+            }
+            render() {
+                return [this._button];
+            }
+        };
+
+        const item = new view.NameValueView(this._host, '', new ButtonValue(addAttributeButton));
+        div_element.appendChild(item.render());
+        return item.render();
+    }
+
+    _addHeader(title, div) {
         const headerElement = this._host.document.createElement('div');
         headerElement.className = 'sidebar-view-header';
         headerElement.innerText = title;
-        this._elements.push(headerElement);
+        div.appendChild(headerElement);
     }
 
     _addProperty(name, value) {
         const item = new view.NameValueView(this._host, name, value);
-        this._elements.push(item.render());
+        this._properties_div.appendChild(item.render());
     }
 
-    addArgument(name, argument) {
-        const value = new view.ParameterView(this._host, argument);
-        value.toggle();
+    _addInput(name, input) {
+        const value = new view.ParameterView(this._host, input, 'input');
+        // value.attachNode(this._node);
         const item = new view.NameValueView(this._host, name, value);
-        this._elements.push(item.render());
+        value.attachNameValueView(item);
+        // this._inputs.push(item);
+
+        const button = this._inputs_div.childNodes[this._inputs_div.childElementCount - 1];
+        this._inputs_div.insertBefore(item.render(), button);
+        return item;
+    }
+
+    _addOutput(name, output) {
+        const value = new view.ParameterView(this._host, output, 'output');
+        const item = new view.NameValueView(this._host, name, value);
+        // value.attachNode(this._node);
+        value.attachNameValueView(item);
+        // this._outputs.push(item);
+
+        const button = this._outputs_div.childNodes[this._outputs_div.childElementCount - 1];
+        this._outputs_div.insertBefore(item.render(), button);
+        return item;
     }
 };
 

@@ -1,10 +1,9 @@
 # Must-have
-- Add support for remaining basic edits in view.js
-	- Add/Change/Remove model input
-	- Add/Change/Remove model output
 - TODOs and FIXMEs
 	- Proper implementation of changing attribute types.
 		- Special treatment of 'DataType' attribute type.
+	- Make call to server when adding/changing/removing model input/output
+	- Update all_tensors global when adding new tensor.
 
 # Other
 - Add support for advanced edits in server & client
@@ -14,6 +13,7 @@
 	- Reorder Node/Model inputs/outputs
 - TODOs and FIXMEs
 	- Allow creation of new tensors instead of selecting from drop-down.
+		- Especially for output tensors
 	- Faster visual graph updates when nodes are added/removed
 		- Probably involves adding new methods to grapher.js
 		- Don't show spinny wheel when a node is removed.
