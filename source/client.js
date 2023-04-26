@@ -1,3 +1,7 @@
+// var client = {};
+
+var base = require('./base');
+
 // Sends graph edits to the server.
 client.Client = class {
 
@@ -58,7 +62,7 @@ client.Client = class {
     }
 
     download(host) {
-        fetch('/model/save', { method: 'POST' })
+        fetch('/model/save', { method: 'GET' })
             .then((status) => {
                 status.blob().then((blob) => {
                     const bigBlob = new Blob([ blob ]);
@@ -68,8 +72,36 @@ client.Client = class {
             .catch((e) => { this._log_fail('download', e); });
     }
 
-    cleanup() {
-        // TODO: implement
+    cleanup(host) {
+        let blobblob = null; // FIXME
+        return fetch('/model/cleanup', { method: 'GET' })
+            .then((status) => {
+                return status.blob()
+            })
+            .then((blob) => {
+                blobblob = blob;
+                return blob.arrayBuffer();
+            })
+            .then((arr) => {
+                const filename = "model.onnx"; // TODO does this matter?
+                const file = new File([blobblob], filename);
+                const buffer = new Uint8Array(arr);
+                const FileContext = class {
+                    constructor(file, buffer) {
+                        this.file = file;
+                        this.stream = new base.BinaryStream(buffer);
+                        this.identifier = filename;
+                    }
+                    require(id) {
+                        return host.require(id);
+                    }
+                    exception(error, fatal) {
+                        host.exception(error, fatal);
+                    }
+                };
+                return new FileContext(file, buffer);
+            })
+            .catch((e) => { this._log_fail('cleanup', e); });
     }
 
     add_attr(node_id, attr_name, attr_value, attr_type) {

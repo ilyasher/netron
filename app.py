@@ -54,7 +54,7 @@ def edit_model():
     except KeyError as e:
         print("KeyError when editing model: ", e)
 
-@post('/model/save')
+@get('/model/save')
 def save_model():
     # Serve the saved graphsurgeon graph as a file which the client can download.
     global model
@@ -62,7 +62,7 @@ def save_model():
     model.save_to_file(tmp_filename)
     return static_file(tmp_filename, root='/')
 
-@post('/model/cleanup')
+@get('/model/cleanup')
 def cleanup_model():
     # TODO
     global model

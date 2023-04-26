@@ -121,7 +121,12 @@ view.View = class {
                 edit.add({
                     label: '&Cleanup Model',
                     // accelerator: 'CmdOrCtrl+S',
-                    execute: () => { client.cleanup(); },
+                    execute: () => {
+                        client.cleanup(this._host)
+                            .then((fileContext) => {
+                                this.open(fileContext);
+                            });
+                    },
                     enabled: () => this.activeGraph && client.connected
                 });
                 edit.add({
