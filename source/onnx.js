@@ -557,6 +557,10 @@ onnx.Argument = class {
         return this._name;
     }
 
+    set name(x) {
+        this._name = x;
+    }
+
     get type() {
         return this._type;
     }

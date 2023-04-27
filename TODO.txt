@@ -2,8 +2,7 @@
 - TODOs and FIXMEs
 	- Proper implementation of changing attribute types.
 		- Special treatment of 'DataType' attribute type.
-	- Make call to server when adding/changing/removing model input/output
-	- Update all_tensors global when adding new tensor.
+	- Fix bug with assign_node_ids when loading some models.
 
 # Other
 - Add support for advanced edits in server & client
@@ -12,8 +11,7 @@
 		- If error exists, it is reported in the GUI.
 	- Reorder Node/Model inputs/outputs
 - TODOs and FIXMEs
-	- Allow creation of new tensors instead of selecting from drop-down.
-		- Especially for output tensors
+	- Figure out when to create new tensors and when to select from drop-down.
 	- Faster visual graph updates when nodes are added/removed
 		- Probably involves adding new methods to grapher.js
 		- Don't show spinny wheel when a node is removed.

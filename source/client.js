@@ -247,6 +247,14 @@ client.Client = class {
         });
     }
 
+    change_model_input_output(old_name, new_name, input_or_output) {
+        this._do_model_edit('change_model_input_output', {
+            'old_name': old_name,
+            'new_name': new_name,
+            'input_or_output': input_or_output,
+        });
+    }
+
     // Helper function to send a model edit to the server.
     // If server is not connected, this function does nothing.
     _do_model_edit(action_name, params) {

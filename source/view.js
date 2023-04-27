@@ -1928,7 +1928,7 @@ view.Input = class extends grapher.Node {
         this.value = value;
         view.Input.counter = view.Input.counter || 0;
         const types = value.arguments.map((argument) => argument.type || '').join('\n');
-        let name = value.name || '';
+        let name = value.arguments[0].name || '';
         if (name.length > 16) {
             name = name.split('/').pop();
         }
@@ -1958,7 +1958,7 @@ view.Output = class extends grapher.Node {
         this.context = context;
         this.value = value;
         const types = value.arguments.map((argument) => argument.type || '').join('\n');
-        let name = value.name || '';
+        let name = value.arguments[0].name || '';
         if (name.length > 16) {
             name = name.split('/').pop();
         }
@@ -2299,6 +2299,9 @@ view.NodeSidebar = class extends view.Control {
             const nameValueView = this._addOutput(newOutput.name, newOutput);
             nameValueView.value._items[0].beginEdit();
 
+            // TODO: is this the only place we need it?
+            all_tensors.push(newOutput);
+
             // Tell the server that a new input is added.
             client.add_node_input_output(node.unique_id, arg.name, 'output');
         });
@@ -2563,7 +2566,7 @@ view.ValueTextView = class {
             if (event.keyCode === 13 && form === this._host.document.activeElement) {
                 this.endEdit();
             }
-        })
+        });
     }
 
     endEdit() {
@@ -2950,6 +2953,7 @@ view.ArgumentView = class extends view.ValueView {
         this._argument = argument;
         this._is_input = input_or_output === 'input';
         this._input_or_output = input_or_output;
+        this._has_node = false;
 
         this._element = this._host.document.createElement('div');
         this._element.className = 'sidebar-view-item-value';
@@ -2987,6 +2991,7 @@ view.ArgumentView = class extends view.ValueView {
             }
 
             // Permanently remove attribute from node.
+            const io_owner = this._has_node ? this._node : main_view.activeGraph;
             const io_list = this._is_input ? this._node.inputs : this._node.outputs;
             for (let i = 0; i < io_list.length; i++) {
                 const tensor = io_list[i];
@@ -2996,7 +3001,12 @@ view.ArgumentView = class extends view.ValueView {
                 }
             }
 
-            client.remove_node_input_output(this._node.unique_id, this._tensor_name, this._input_or_output);
+            if (this._has_node)
+            {
+                client.remove_node_input_output(this._node.unique_id, this._tensor_name, this._input_or_output);
+            } else {
+                client.remove_model_input_output(this._tensor_name, this._input_or_output);
+            }
 
             // Delete html element.
             this.remove();
@@ -3040,6 +3050,7 @@ view.ArgumentView = class extends view.ValueView {
 
     attachNode(node) {
         this._node = node;
+        this._has_node = true;
     }
 
     render() {
@@ -3068,6 +3079,27 @@ view.ArgumentView = class extends view.ValueView {
             this._expander.style.display = 'none';
         }
 
+        // Node outputs get a text field
+        if (this._has_node && !this._is_input) {
+            const item = this._name_line;
+            let form = this._host.document.createElement('INPUT');
+            const oldValue = this._tensor_name;
+            form.setAttribute("type", "text");
+            item.className = 'sidebar-view-item-value-line-edit-input';
+            item.innerText = ''
+            item.appendChild(form);
+            form.value = oldValue;
+            form.focus();
+            this._form = form;
+
+            form.addEventListener('keydown', (event) => {
+                if (event.keyCode === 13 && form === this._host.document.activeElement) {
+                    this.endEdit();
+                }
+            });
+            return;
+        }
+
         let selectHTML = 'name: ' + '<b>' + '<select name="tensors">';
         for (const tensor of all_tensors) {
             // I hope tensor names can't contain quotes...
@@ -3090,6 +3122,39 @@ view.ArgumentView = class extends view.ValueView {
             this._expander.style.display = 'block';
         }
 
+        // Node outputs get a text field
+        if (this._has_node && !this._is_input) {
+            const form = this._form;
+            const item = this._name_line;
+            const newValue = form.value;
+
+            console.log("Setting new value to " + newValue);
+            item.innerText = newValue;
+            form.value = '';
+
+            const io_list = this._node.outputs;
+            for (let i = 0; i < io_list.length; i++) {
+                const oldTensor = io_list[i];
+                if (oldTensor.arguments[0].name == this._tensor_name) {
+                    oldTensor.arguments[0].name = newValue;
+                    break;
+                }
+            }
+
+            // Delete form
+            item.className = 'sidebar-view-item-value-line';
+            form.remove();
+
+            // Report change to server.
+            client.change_node_input_output(this._node.unique_id, this._tensor_name, newValue, this._input_or_output);
+
+            this._tensor_name = newValue;
+
+            // No need to redraw graph because output doesn't connect to anything yet.
+            return;
+        }
+
+
         // FIXME awful
         const newTensorName = this._name_line.childNodes[1].childNodes[0].value;
         this._name_line.innerHTML = '<span class=\'sidebar-view-item-value-line-content\'>name: <b>' + newTensorName + '</b></span>';
@@ -3103,31 +3168,22 @@ view.ArgumentView = class extends view.ValueView {
             }
         }
         const node = this._node;
-        if (node)
-        {
-            const io_list = this._is_input ? node.inputs : node.outputs;
-            for (let i = 0; i < io_list.length; i++) {
-                const oldTensor = io_list[i];
-                if (oldTensor.arguments[0].name == this._tensor_name) {
-                    io_list[i] = newTensor;
-                    break;
-                }
+        const io_owner = this._has_node ? node : main_view.activeGraph;
+        const io_list = this._is_input ? io_owner.inputs : io_owner.outputs;
+        for (let i = 0; i < io_list.length; i++) {
+            const oldTensor = io_list[i];
+            if (oldTensor.arguments[0].name == this._tensor_name) {
+                io_list[i] = newTensor;
+                break;
             }
-            // Notify server that we changed the input or output name.
+        }
+
+        // Notify server that we changed the input or output name.
+        if (this._has_node)
+        {
             client.change_node_input_output(node.unique_id, this._tensor_name, newTensorName, this._input_or_output);
         } else {
-            // Graph inputs/outputs
-            const io_list = this._is_input ? main_view.activeGraph.inputs : main_view.activeGraph.outputs;
-            for (let i = 0; i < io_list.length; i++) {
-                const oldTensor = io_list[i];
-                console.log(oldTensor.arguments[0].name, this._tensor_name, newTensor);
-                if (oldTensor.arguments[0].name == this._tensor_name) {
-                    io_list[i] = newTensor;
-                    break;
-                }
-            }
-            // TODO
-            // client.change_node_input_output(this._tensor_name, newTensorName, this._input_or_output);
+            client.change_model_input_output(this._tensor_name, newTensorName, this._input_or_output);
         }
 
         this._tensor_name = newTensorName;
@@ -3274,8 +3330,9 @@ view.ModelSidebar = class extends view.Control {
 
             this._addHeader('Inputs', this._inputs_div);
             this._addCenteredButton('New Input', this._inputs_div, () => {
-                const arg = new onnx.Argument('input tensor name');
-                const newInput = new onnx.Parameter('', [arg]);
+                const name = 'input tensor name';
+                const arg = new onnx.Argument(name);
+                const newInput = new onnx.Parameter(name, [arg]);
 
                 graph.inputs.push(newInput);
                 const nameValueView = this._addInput(newInput.name, newInput);
@@ -3289,15 +3346,18 @@ view.ModelSidebar = class extends view.Control {
             }
             this._addHeader('Outputs', this._outputs_div);
             this._addCenteredButton('New Output', this._outputs_div, () => {
-                const arg = new onnx.Argument('output tensor name');
-                const newOutput = new onnx.Parameter('', [arg]);
+                const name = 'output tensor name';
+                const arg = new onnx.Argument(name);
+                const newOutput = new onnx.Parameter(name, [arg]);
 
                 graph.outputs.push(newOutput);
                 const nameValueView = this._addOutput(newOutput.name, newOutput);
                 nameValueView.value._items[0].beginEdit();
 
+                console.log("add_model_input_output", arg.name);
+
                 // Tell the server that a new input is added.
-                client.remove_model_input_output(arg.name, 'output');
+                client.add_model_input_output(arg.name, 'output');
             });
             for (const output of graph.outputs) {
                 this._addOutput(output.name, output);

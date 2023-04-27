@@ -45,7 +45,7 @@ class Model:
                 json_node_idx += 1
         if len(self.nodes) != len(id_mapping_json):
             raise RuntimeError(f'Only found {len(self.nodes)} matching nodes ' +\
-                'out of the required {len(id_mapping_json)}.')
+                f'out of the required {len(id_mapping_json)}.')
 
 
     ################ Serialization & Saving
@@ -97,6 +97,7 @@ class Model:
             # Model inputs & outputs.
             'add_model_input_output': self._add_model_input_output,
             'remove_model_input_output': self._remove_model_input_output,
+            'change_model_input_output': self._change_model_input_output,
         }
         action_name = edit_json['action']
         return action_handlers[action_name](edit_json)
@@ -238,12 +239,38 @@ class Model:
         io_name  = edit_json['io_name']
         is_input = edit_json['input_or_output'] == 'input'
 
+        tensors = self.model.tensors()
         io_list = self.model.inputs if is_input else self.model.outputs
-        io_list.append(io_name)
+
+        new_tensor = tensors.get(io_name, gs.Variable(name=io_name))
+        io_list.append(new_tensor)
 
     def _remove_model_input_output(self, edit_json: Dict[str, Any]):
         io_name  = edit_json['io_name']
         is_input = edit_json['input_or_output'] == 'input'
 
         io_list = self.model.inputs if is_input else self.model.outputs
-        io_list.remove(io_name)
+        tensors = self.model.tensors()
+        for i in range(len(io_list)):
+            if io_list[i].name == io_name:
+                io_list.pop(i)
+                break
+        else:
+            raise ValueError(f'No tensor with name {io_name}')
+
+    def _change_model_input_output(self, edit_json: Dict[str, Any]):
+        old_name = edit_json['old_name']
+        new_name = edit_json['new_name']
+        is_input = edit_json['input_or_output'] == 'input'
+
+        io_list = self.model.inputs if is_input else self.model.outputs
+
+        tensors = self.model.tensors()
+        new_tensor = tensors.get(new_name, gs.Variable(new_name))
+        for i, old_tensor in enumerate(io_list):
+            print(old_tensor.name)
+            if old_tensor.name == old_name:
+                io_list[i] = new_tensor
+                break
+        else:
+            raise ValueError(f'No tensor with name {old_name}')
