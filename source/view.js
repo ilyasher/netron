@@ -2992,7 +2992,7 @@ view.ArgumentView = class extends view.ValueView {
 
             // Permanently remove attribute from node.
             const io_owner = this._has_node ? this._node : main_view.activeGraph;
-            const io_list = this._is_input ? this._node.inputs : this._node.outputs;
+            const io_list = this._is_input ? io_owner.inputs : io_owner.outputs;
             for (let i = 0; i < io_list.length; i++) {
                 const tensor = io_list[i];
                 if (tensor.arguments[0].name == this._tensor_name) {
