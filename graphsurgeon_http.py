@@ -10,6 +10,8 @@ from typing import Dict, Any
 import onnx
 import onnx_graphsurgeon as gs
 
+import numpy as np
+
 class Model:
 
     def __init__(self, model: gs.Graph):
@@ -182,7 +184,7 @@ class Model:
         io_list = node.inputs if is_input else node.outputs
 
         tensors = self.model.tensors()
-        new_tensor = tensors.get(io_name, gs.Variable(name=io_name))
+        new_tensor = tensors.get(io_name, gs.Variable(name=io_name, dtype=np.float32))
         io_list.append(new_tensor)
 
     def _remove_node_input_output(self, edit_json: Dict[str, Any]):
@@ -212,7 +214,7 @@ class Model:
         io_list = node.inputs if is_input else node.outputs
 
         tensors = self.model.tensors()
-        new_tensor = tensors.get(new_name, gs.Variable(new_name))
+        new_tensor = tensors.get(new_name, gs.Variable(new_name, dtype=np.float32))
         for i, old_tensor in enumerate(io_list):
             if old_tensor.name == old_name:
                 io_list[i] = new_tensor
@@ -242,7 +244,7 @@ class Model:
         tensors = self.model.tensors()
         io_list = self.model.inputs if is_input else self.model.outputs
 
-        new_tensor = tensors.get(io_name, gs.Variable(name=io_name))
+        new_tensor = tensors.get(io_name, gs.Variable(name=io_name, dtype=np.float32))
         io_list.append(new_tensor)
 
     def _remove_model_input_output(self, edit_json: Dict[str, Any]):
@@ -266,7 +268,7 @@ class Model:
         io_list = self.model.inputs if is_input else self.model.outputs
 
         tensors = self.model.tensors()
-        new_tensor = tensors.get(new_name, gs.Variable(new_name))
+        new_tensor = tensors.get(new_name, gs.Variable(new_name, dtype=np.float32))
         for i, old_tensor in enumerate(io_list):
             print(old_tensor.name)
             if old_tensor.name == old_name:

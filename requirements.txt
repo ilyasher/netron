@@ -2,3 +2,4 @@ bottle
 onnx
 --extra-index-url https://pypi.ngc.nvidia.com
 onnx-graphsurgeon
+numpy
